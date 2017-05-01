@@ -12,6 +12,7 @@
   },
   "devDependencies": {
     "@types/node": "^7.0.14",
+    "node-gyp": "^3.6.1",
     "typescript": "^2.3.2"
   },
   "scripts": {
