@@ -116,21 +116,27 @@ static int ChildProcess(void *param_ptr)
                        parameter.stderrRedirection, nullfd);
         }
 
+        fs::path tempRoot("/tmp");
         Ensure(mount("none", "/", NULL, MS_REC | MS_PRIVATE, NULL)); // Make root private
+        Ensure(mount(parameter.chrootDirectory.string().c_str(), tempRoot.string().c_str(), "", MS_BIND | MS_REC, ""));
+        Ensure(mount("", tempRoot.string().c_str(), "", MS_BIND | MS_REMOUNT | MS_RDONLY | MS_REC, ""));
+
         if (parameter.binaryDirectory != "")
         {
-            Ensure(mount(parameter.binaryDirectory.string().c_str(),                       // Source directory
-                         (parameter.chrootDirectory / fs::path("sandbox/binary")).c_str(), // Target Directory
+            Ensure(mount(parameter.binaryDirectory.string().c_str(),                // Source directory
+                         (tempRoot / fs::path("sandbox/binary")).c_str(), // Target Directory
                          "", MS_BIND | MS_REC, ""));
+            Ensure(mount("", (tempRoot / fs::path("sandbox/binary")).c_str(), "",
+                         MS_BIND | MS_REMOUNT | MS_RDONLY | MS_REC, ""));
         }
         if (parameter.workingDirectory != "")
         {
             Ensure(mount(parameter.workingDirectory.string().c_str(),
-                         (parameter.chrootDirectory / fs::path("sandbox/working")).c_str(),
+                         (tempRoot / fs::path("sandbox/working")).c_str(),
                          "", MS_BIND | MS_REC, ""));
         }
 
-        Ensure(chroot(parameter.chrootDirectory.string().c_str()));
+        Ensure(chroot(tempRoot.string().c_str()));
         Ensure(chdir("/sandbox/working"));
 
         if (parameter.mountProc)
