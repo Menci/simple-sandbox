@@ -72,7 +72,7 @@ export class SandboxProcess extends events.EventEmitter {
                 myFather.emit('error', err);
             } else {
                 myFather.cleanup();
-                const memUsage: number = Number(sandboxAddon.GetCgroupProperty("memory", myFather.parameter.cgroup, "memory.usage_in_bytes"));
+                const memUsage: number = Number(sandboxAddon.GetCgroupProperty("memory", myFather.parameter.cgroup, "memory.max_usage_in_bytes"));
 
                 let result: SandboxResult = {
                     status: SandboxStatus.Unknown,
