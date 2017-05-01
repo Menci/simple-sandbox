@@ -16,7 +16,7 @@ const doThings = async () => {
             time: 1000,
             mountProc: true,
             redirectBeforeChroot: true,
-            memory: 1024000 * 1024, // 100MB
+            memory: 10240 * 1024, // 10MB
             process: 10,
             user: "nobody",
             cgroup: "asdf"
