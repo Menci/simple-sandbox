@@ -1,11 +1,12 @@
 {
   "name": "simple-sandbox",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "A simple sandbox for Node.js using Linux namespaces and cgroup.",
   "main": "lib/index.js",
   "author": "t123yh",
   "gypfile": true,
   "license": "MIT",
+  "url": "https://github.com/t123yh/simple-sandbox",
   "dependencies": {
     "bindings": "^1.2.1",
     "nan": "^2.6.2"
