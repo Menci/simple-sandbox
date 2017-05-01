@@ -47,28 +47,7 @@ export class SandboxProcess extends events.EventEmitter {
                 }
             }, checkInterval);
         }
-    }
 
-    private cleanup() {
-        if (this.running) {
-            if (this.cancellationToken) {
-                clearInterval(this.cancellationToken);
-            }
-            process.removeListener('exit', this.stopCallback);
-            this.running = false;
-        }
-    }
-
-    stop() {
-        this.cancelled = true;
-        try {
-            process.kill(this.pid, "SIGKILL");
-        } catch (err) { }
-        this.cleanup();
-    }
-
-    waitForStop() {
-        const myFather = this;
         sandboxAddon.WaitForProcess(this.pid, (err, runResult) => {
             if (err) {
                 myFather.stop();
@@ -98,6 +77,34 @@ export class SandboxProcess extends events.EventEmitter {
 
                 myFather.emit('exit', result);
             }
+        });
+    }
+
+    private cleanup() {
+        if (this.running) {
+            if (this.cancellationToken) {
+                clearInterval(this.cancellationToken);
+            }
+            process.removeListener('exit', this.stopCallback);
+            this.running = false;
+        }
+    }
+
+    stop() {
+        this.cancelled = true;
+        try {
+            console.log("KILLING " + this.pid);
+            process.kill(this.pid, "SIGKILL");
+        } catch (err) { }
+        this.cleanup();
+    }
+
+    waitForStop(callback) {
+        this.on('exit', (status) => {
+            callback(null, status);
+        });
+        this.on('error', (err) => {
+            callback(err, null);
         });
     }
 };
