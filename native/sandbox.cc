@@ -256,9 +256,15 @@ pid_t StartSandbox(const SandboxParameter &parameter
 
         // Forcibly clear the cache by limit the usage to 0.
         WRITETO(memInfo, "memory.force_empty", 0);
-        WRITETO(memInfo, "memory.limit_in_bytes", parameter.memoryLimit);
-        WRITETO(memInfo, "memory.memsw.limit_in_bytes", parameter.memoryLimit);
-        WRITETO(pidInfo, "pids.max", parameter.processLimit);
+        if (parameter.memoryLimit != -1)
+        {
+            WRITETO(memInfo, "memory.limit_in_bytes", parameter.memoryLimit);
+            WRITETO(memInfo, "memory.memsw.limit_in_bytes", parameter.memoryLimit);
+        }
+        if (parameter.processLimit != -1)
+        {
+            WRITETO(pidInfo, "pids.max", parameter.processLimit);
+        }
 
         // Wait for at most 100ms. If the child process hasn't posted the semaphore,
         // We will assume that the child has already dead.

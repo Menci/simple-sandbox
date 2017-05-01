@@ -6,7 +6,7 @@ import * as events from 'events';
 export class SandboxProcess extends events.EventEmitter {
     public readonly pid: number;
     public readonly parameter: SandboxParameter;
-    private readonly cancellationToken: NodeJS.Timer;
+    private readonly cancellationToken: NodeJS.Timer = null;
     private readonly stopCallback: () => void;
 
     private countedCpuTime: number = 0;
@@ -29,28 +29,31 @@ export class SandboxProcess extends events.EventEmitter {
         }
         process.addListener('exit', this.stopCallback);
 
-        // Check every 50ms.
-        const checkInterval = Math.min(this.parameter.time / 10, 50);
-        this.cancellationToken = setInterval(() => {
-            const val: number = Number(sandboxAddon.GetCgroupProperty("cpuacct", myFather.parameter.cgroup, "cpuacct.usage"));
-            myFather.countedCpuTime += Math.max(
-                val - myFather.actualCpuTime,            // The real time, or if less than 40%,
-                utils.milliToNano(checkInterval) * 0.4 // 40% of actually elapsed time
-            );
-            myFather.actualCpuTime = val;
+        if (this.parameter.time != -1) {
+            // Check every 50ms.
+            const checkInterval = Math.min(this.parameter.time / 10, 50);
+            this.cancellationToken = setInterval(() => {
+                const val: number = Number(sandboxAddon.GetCgroupProperty("cpuacct", myFather.parameter.cgroup, "cpuacct.usage"));
+                myFather.countedCpuTime += Math.max(
+                    val - myFather.actualCpuTime,            // The real time, or if less than 40%,
+                    utils.milliToNano(checkInterval) * 0.4 // 40% of actually elapsed time
+                );
+                myFather.actualCpuTime = val;
 
-            // Time limit exceeded
-            if (myFather.countedCpuTime > utils.milliToNano(parameter.time)) {
-                myFather.timeout = true;
-                myFather.stop();
-            }
-        }, checkInterval);
-
+                // Time limit exceeded
+                if (myFather.countedCpuTime > utils.milliToNano(parameter.time)) {
+                    myFather.timeout = true;
+                    myFather.stop();
+                }
+            }, checkInterval);
+        }
     }
 
     private cleanup() {
         if (this.running) {
-            clearInterval(this.cancellationToken);
+            if (this.cancellationToken) {
+                clearInterval(this.cancellationToken);
+            }
             process.removeListener('exit', this.stopCallback);
             this.running = false;
         }
@@ -85,7 +88,7 @@ export class SandboxProcess extends events.EventEmitter {
                     result.status = SandboxStatus.TimeLimitExceeded;
                 } else if (myFather.cancelled) {
                     result.status = SandboxStatus.Cancelled;
-                } else if (memUsage > myFather.parameter.memory) {
+                } else if (myFather.parameter.memory != -1 && memUsage > myFather.parameter.memory) {
                     result.status = SandboxStatus.MemoryLimitExceeded;
                 } else if (runResult.status == 'signaled') {
                     result.status = SandboxStatus.RuntimeError;
