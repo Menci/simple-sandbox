@@ -72,7 +72,7 @@ export class SandboxProcess extends events.EventEmitter {
                 myFather.emit('error', err);
             } else {
                 myFather.cleanup();
-                const memUsage: number = Number(sandboxAddon.GetCgroupProperty("memory", myFather.parameter.cgroup, "memory.max_usage_in_bytes"));
+                const memUsage: number = Number(sandboxAddon.GetCgroupProperty("memory", myFather.parameter.cgroup, "memory.memsw.max_usage_in_bytes"));
 
                 let result: SandboxResult = {
                     status: SandboxStatus.Unknown,
@@ -81,9 +81,7 @@ export class SandboxProcess extends events.EventEmitter {
                     code: runResult.code
                 };
 
-                if (runResult.status == 'exited') {
-                    result.status = SandboxStatus.OK;
-                } else if (myFather.timeout) {
+                if (myFather.timeout) {
                     result.status = SandboxStatus.TimeLimitExceeded;
                 } else if (myFather.cancelled) {
                     result.status = SandboxStatus.Cancelled;
@@ -91,6 +89,8 @@ export class SandboxProcess extends events.EventEmitter {
                     result.status = SandboxStatus.MemoryLimitExceeded;
                 } else if (runResult.status == 'signaled') {
                     result.status = SandboxStatus.RuntimeError;
+                } else if (runResult.status == 'exited') {
+                    result.status = SandboxStatus.OK;
                 }
 
                 myFather.emit('exit', result);

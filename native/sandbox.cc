@@ -254,7 +254,10 @@ pid_t StartSandbox(const SandboxParameter &parameter
         }                                                           \
     }
 
+        // Forcibly clear the cache by limit the usage to 0.
+        WRITETO(memInfo, "memory.force_empty", 0);
         WRITETO(memInfo, "memory.limit_in_bytes", parameter.memoryLimit);
+        WRITETO(memInfo, "memory.memsw.limit_in_bytes", parameter.memoryLimit);
         WRITETO(pidInfo, "pids.max", parameter.processLimit);
 
         // Wait for at most 100ms. If the child process hasn't posted the semaphore,
@@ -277,7 +280,7 @@ pid_t StartSandbox(const SandboxParameter &parameter
         }
 
         // Clear usage stats.
-        WriteGroupProperty(memInfo, "memory.max_usage_in_bytes", 0);
+        WriteGroupProperty(memInfo, "memory.memsw.max_usage_in_bytes", 0);
         WriteGroupProperty(cpuInfo, "cpuacct.usage", 0);
 
         // Continue the child.
