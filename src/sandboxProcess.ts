@@ -99,12 +99,14 @@ export class SandboxProcess extends events.EventEmitter {
         this.cleanup();
     }
 
-    waitForStop(callback) {
-        this.on('exit', (status) => {
-            callback(null, status);
-        });
-        this.on('error', (err) => {
-            callback(err, null);
+    waitForStop() {
+        return new Promise((res, rej) => {
+            this.on('exit', (status) => {
+                res(status);
+            });
+            this.on('error', (err) => {
+                rej(err);
+            });
         });
     }
 };

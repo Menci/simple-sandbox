@@ -35,11 +35,7 @@ const doThings = async () => {
             sandboxedProcess.stop();
         });
 
-        const result = await new Promise((res, rej) => {
-            sandboxedProcess.waitForStop((err, result) => {
-                if (err) rej(err); else res(result);
-            });
-        });
+        const result = await sandboxedProcess.waitForStop();
         console.log("Your sandbox finished!" + JSON.stringify(result));
     } catch (ex) {
         console.log("Whooops! " + ex.toString());

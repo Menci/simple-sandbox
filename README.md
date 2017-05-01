@@ -51,14 +51,13 @@ To terminate the sandboxed process, just use the `stop()` function:
 myProcess.stop();
 ```
 
-To wait for the sandboxed process to end, use the `waitForStop(callback)` function:
+To wait for the sandboxed process to end, use the `waitForStop()` function, which returns a `Promise`:
 ```js
-myProcess.waitForStop((err, result) => {
-    if (err) 
-        console.log("Whooops!" + err.toString());
-    else
-        console.log("OK! " + JSON.stringify(result));
-})
+myProcess.waitForStop().then((result) => {
+    console.log("OK! " + JSON.stringify(result));
+}).catch((err) => {
+    console.log("Whooops!" + err.toString());
+});
 ```
 
 Note that `myProcess` itself is a EventEmitter, so you can register `exit` (indicates that the child process exited), and `error` (indicates that some error happens) event listener on it.
