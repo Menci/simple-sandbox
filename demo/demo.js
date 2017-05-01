@@ -1,21 +1,28 @@
 const sss = require('../lib'),
     rl = require('readline');
 
+const terminationHandler = () => {
+    process.exit(1);
+};
+
+process.on('SIGTERM', terminationHandler);
+process.on('SIGINT', terminationHandler);
+
 const doThings = async () => {
     try {
         const sandboxedProcess = await sss.startSandbox({
-            chroot: "/home/t123yh/alpine",
-            binary: "/home/t123yh/bintest",
-            working: "/home/t123yh/asdf",
-            executable: "/sandbox/working/a.out",
-            parameters: ["/usr/bin/yes"],
+            chroot: "/opt/sandbox-test/rootfs",
+            binary: "/opt/sandbox-test/binary",
+            working: "/opt/sandbox-test/working",
+            executable: "/bin/sh",
+            parameters: ["/bin/sh"],
             environments: ["PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"],
-            stdin: "/dev/null",
-            stdout: "/dev/stdout",
-            stderr: "/dev/stderr",
-            time: 1000,
+            stdin: "test.in",
+            stdout: "test.out",
+            stderr: "test.err",
+            time: 10000000,
             mountProc: true,
-            redirectBeforeChroot: true,
+            redirectBeforeChroot: false,
             memory: 10240 * 1024, // 10MB
             process: 10,
             user: "nobody",
@@ -29,13 +36,9 @@ const doThings = async () => {
         });
 
         const result = await new Promise((res, rej) => {
-            sandboxedProcess.on('exit', (result) => {
-                res(result);
+            sandboxedProcess.waitForStop((err, result) => {
+                if (err) rej(err); else res(result);
             });
-            sandboxedProcess.on('error', (err) => {
-                rej(err);
-            });
-            sandboxedProcess.waitForStop();
         });
         console.log("Your sandbox finished!" + JSON.stringify(result));
     } catch (ex) {
