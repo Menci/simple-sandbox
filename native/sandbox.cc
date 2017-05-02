@@ -123,7 +123,7 @@ static int ChildProcess(void *param_ptr)
 
         if (parameter.binaryDirectory != "")
         {
-            Ensure(mount(parameter.binaryDirectory.string().c_str(),                // Source directory
+            Ensure(mount(parameter.binaryDirectory.string().c_str(),      // Source directory
                          (tempRoot / fs::path("sandbox/binary")).c_str(), // Target Directory
                          "", MS_BIND | MS_REC, ""));
             Ensure(mount("", (tempRoot / fs::path("sandbox/binary")).c_str(), "",
@@ -248,7 +248,7 @@ pid_t StartSandbox(const SandboxParameter &parameter
             WriteGroupProperty(*item, "tasks", container_pid);
         }
 
-#define WRITETO(__where, __name, __value)                           \
+#define WRITE_WITH_CHECK(__where, __name, __value)                           \
     {                                                               \
         if ((__value) >= 0)                                         \
         {                                                           \
@@ -261,16 +261,10 @@ pid_t StartSandbox(const SandboxParameter &parameter
     }
 
         // Forcibly clear any memory usage by cache.
-        WRITETO(memInfo, "memory.force_empty", 0);
-        if (parameter.memoryLimit != -1)
-        {
-            WRITETO(memInfo, "memory.limit_in_bytes", parameter.memoryLimit);
-            WRITETO(memInfo, "memory.memsw.limit_in_bytes", parameter.memoryLimit);
-        }
-        if (parameter.processLimit != -1)
-        {
-            WRITETO(pidInfo, "pids.max", parameter.processLimit);
-        }
+        WriteGroupProperty(memInfo, "memory.force_empty", 0);
+        WRITE_WITH_CHECK(memInfo, "memory.limit_in_bytes", parameter.memoryLimit);
+        WRITE_WITH_CHECK(memInfo, "memory.memsw.limit_in_bytes", parameter.memoryLimit);
+        WRITE_WITH_CHECK(pidInfo, "pids.max", parameter.processLimit);
 
         // Wait for at most 100ms. If the child process hasn't posted the semaphore,
         // We will assume that the child has already dead.
