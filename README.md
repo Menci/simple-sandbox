@@ -1,7 +1,7 @@
 # simple-sandbox
 A simple linux sandbox with Node.js API.
 
-## Prerequisits
+## Prerequisites
 ### Packages
 You need to have the build-essentials (g++, make, etc.) and the boost library (particularly, boost-system and boost-filesystem) installed in your system in order to build the C++ part.
 
