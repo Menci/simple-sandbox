@@ -276,9 +276,9 @@ pid_t StartSandbox(const SandboxParameter &parameter
         // We will assume that the child has already dead.
         bool waitResult = execParam.semaphore1.TimedWait(0, 100 * 1000 * 1000);
 
-        int errLen, bytesRead = Ensure(read(execParam.pipefd[0], &errLen, sizeof(int)));
+        int errLen, bytesRead = read(execParam.pipefd[0], &errLen, sizeof(int));
         // Child will be killed once the error has been thrown.
-        if (!waitResult || bytesRead == 0)
+        if (!waitResult || bytesRead == 0 || bytesRead == -1)
         {
             // No information available.
             throw std::runtime_error("The child process has exited unexpectedly.");
