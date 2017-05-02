@@ -6,7 +6,15 @@
   "author": "t123yh",
   "gypfile": true,
   "license": "MIT",
-  "url": "https://github.com/t123yh/simple-sandbox",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/t123yh/simple-sandbox"
+  },
+  "keywords": [
+    "sandbox",
+    "chroot",
+    "linux"
+  ],
   "dependencies": {
     "bindings": "^1.2.1",
     "nan": "^2.6.2"
