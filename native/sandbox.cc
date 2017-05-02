@@ -260,7 +260,7 @@ pid_t StartSandbox(const SandboxParameter &parameter
         }                                                           \
     }
 
-        // Forcibly clear the cache by limit the usage to 0.
+        // Forcibly clear any memory usage by cache.
         WRITETO(memInfo, "memory.force_empty", 0);
         if (parameter.memoryLimit != -1)
         {
