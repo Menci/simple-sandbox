@@ -228,11 +228,11 @@ pid_t StartSandbox(const SandboxParameter &parameter
     try
     {
         // char* childStack = new char[childStackSize];
-        std::vector<char> *childStack = new std::vector<char>(childStackSize); // I don't want to call `delete`
+        std::vector<char> childStack(childStackSize); // I don't want to call `delete`
 
         ExecutionParameter execParam(parameter, O_CLOEXEC | O_NONBLOCK);
 
-        container_pid = Ensure(clone(ChildProcess, &*childStack->end(),
+        container_pid = Ensure(clone(ChildProcess, &*childStack.end(),
                                      CLONE_NEWNET | CLONE_NEWUTS | CLONE_NEWPID | CLONE_NEWNS | SIGCHLD,
                                      const_cast<void *>(reinterpret_cast<const void *>(&execParam))));
 
@@ -291,6 +291,10 @@ pid_t StartSandbox(const SandboxParameter &parameter
 
         // Continue the child.
         execParam.semaphore2.Post();
+
+        // Wait for 1ms to prevent the child stack deallocated before execve.
+        // TODO: Find a better way to handle this.
+        usleep(1000);
 
         /*
         // `raise(SIGSTOP)` won't work as described above. We use semaphores instead.
