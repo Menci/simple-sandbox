@@ -213,28 +213,36 @@ NAN_METHOD(StartChild)
         return;
     }
 
-#define PARAM(_name_) (Get(jsparam, STR(#_name_)).ToLocalChecked())
-#define GET_INT(_param_name_) (PARAM(_param_name_)->IntegerValue())
-#define GET_BOOL(_param_name_) (PARAM(_param_name_)->BooleanValue())
-#define GET_STRING(_param_name_) (ValueToString(PARAM(_param_name_)))
+#define PARAM(_src_, _name_) (Get(_src_, STR(#_name_)).ToLocalChecked())
+#define GET_INT(_src_, _param_name_) (PARAM(_src_, _param_name_)->IntegerValue())
+#define GET_BOOL(_src_, _param_name_) (PARAM(_src_, _param_name_)->BooleanValue())
+#define GET_STRING(_src_, _param_name_) (ValueToString(PARAM(_src_, _param_name_)))
 
     // param.timeLimit = GET_INT(time);
-    param.memoryLimit = GET_INT(memory) / 4 * 5; // Reserve some space to detect memory limit exceeding.
-    param.processLimit = GET_INT(process);
-    param.redirectBeforeChroot = GET_BOOL(redirectBeforeChroot);
-    param.mountProc = GET_BOOL(mountProc);
-    param.chrootDirectory = fs::path(GET_STRING(chroot));
-    param.binaryDirectory = fs::path(GET_STRING(binary));
-    param.workingDirectory = fs::path(GET_STRING(working));
-    param.executablePath = GET_STRING(executable);
-    param.stdinRedirection = GET_STRING(stdin);
-    param.stdoutRedirection = GET_STRING(stdout);
-    param.stderrRedirection = GET_STRING(stderr);
-    param.userName = GET_STRING(user);
-    param.cgroupName = GET_STRING(cgroup);
+    param.memoryLimit = GET_INT(jsparam, memory) / 4 * 5; // Reserve some space to detect memory limit exceeding.
+    param.processLimit = GET_INT(jsparam, process);
+    param.redirectBeforeChroot = GET_BOOL(jsparam, redirectBeforeChroot);
+    param.mountProc = GET_BOOL(jsparam, mountProc);
+    param.chrootDirectory = fs::path(GET_STRING(jsparam, chroot));
+    param.executablePath = GET_STRING(jsparam, executable);
+    param.stdinRedirection = GET_STRING(jsparam, stdin);
+    param.stdoutRedirection = GET_STRING(jsparam, stdout);
+    param.stderrRedirection = GET_STRING(jsparam, stderr);
+    param.userName = GET_STRING(jsparam, user);
+    param.cgroupName = GET_STRING(jsparam, cgroup);
 
-    StringArrayToVector(Get(jsparam, STR("parameters")).ToLocalChecked(), param.executableParameters);
-    StringArrayToVector(Get(jsparam, STR("environments")).ToLocalChecked(), param.environmentVariables);
+    StringArrayToVector(PARAM(jsparam, parameters), param.executableParameters);
+    StringArrayToVector(PARAM(jsparam, environments), param.environmentVariables);
+    Local<Array> mounts = Local<Array>::Cast(PARAM(jsparam, mounts));
+    for (int i = 0; i < mounts->Length(); i++)
+    {
+        Local<Object> mntObj = Local<Object>::Cast(mounts->Get(i));
+        MountInfo mnt;
+        mnt.src = GET_STRING(mntObj, src);
+        mnt.dst = GET_STRING(mntObj, dst);
+        mnt.limit = GET_INT(mntObj, limit);
+        param.mounts.push_back(mnt);
+    }
 
     Callback *callback = new Callback(info[1].As<Function>());
 

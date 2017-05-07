@@ -17,6 +17,13 @@ struct ExecutionResult
     int Code;
 };
 
+struct MountInfo
+{
+    std::string src;
+    std::string dst;
+    int64_t limit;
+};
+
 struct SandboxParameter
 {
     // Time limit is done by querying cpuacct cgroup every 100ms. This is done in the js code.
@@ -38,18 +45,9 @@ struct SandboxParameter
     // Make sure this is not writable by `nobody` user!
     // Make sure there are empty directory `/sandbox/binary` and `/sandbox/working` in the chroot directory.
     boost::filesystem::path chrootDirectory;
-    // This directory will be mounted to /sandbox/binary.
-    // Also, make sure it is not writable.
-    // Currently no special measure is taken to ensure readonly to this directory,
-    // but this may be forced readonly in the future.
-    boost::filesystem::path binaryDirectory;
-    // This directory will be mounted to /sandbox/working,
-    // and be chdired into before running our executable.
-    // Please make sure this directory is writable if you want your executable to give out any output.
-    //
-    // You can copy your input data into this directory.
-    // Please make your input data not writable by `nobody` user, or it may be overwritten.
-    boost::filesystem::path workingDirectory;
+
+    std::vector<MountInfo> mounts;
+
     // This executable is the file that will be run.
     // You may specify your native binary (or file with #! interpreter)
     // located in your binaryDirectory, such as `/sandbox/binary/a.out`,

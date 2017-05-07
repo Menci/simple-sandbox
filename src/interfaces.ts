@@ -1,3 +1,13 @@
+export interface MountInfo {
+    // The source path, in the real world.
+    src: string;
+    // The destination path, in the sandbox.
+    dst: string;
+    // The maximum length (in bytes) the sandboxed process may write to the mount.
+    // 0 for readonly; -1 for no limit.
+    limit: number;
+}
+
 export interface SandboxParameter {
     // Time limit, in milliseconds. -1 for no limit.
     time: number;
@@ -17,17 +27,7 @@ export interface SandboxParameter {
     // so you can have any number of sandboxes using the same chroot synchronously.
     chroot: string;
 
-    // This is the location of the binary directory on your machine.
-    // This directory will be mounted to `/sandbox/binary` inside the sandbox at runtime.
-    // It will be mounted read-only, but it is still recommended to have the correct permission set on the directory to not let
-    // sandboxed program write here.
-
-    binary?: string;
-    // This is the location of the working directory on your machine.
-    // This directory will be mounted to `/sandbox/working` inside the sandbox at runtime.
-    // It will be mounted read-write. 
-    // If the write permission is not set on the directory, the sandboxed program will not be able to write to it.
-    working: string;
+    mounts:MountInfo[];
 
     // Whether to redirect the stdio before chroot (and setuid).
     // True indicates that stdio should be redirected before chrooting.
@@ -36,7 +36,7 @@ export interface SandboxParameter {
     // False indicates that stdio should be redirected after chrooting.
     // In this way, the path is relative to the `/sandbox/working` directory, and the permission will be checked when creating the output files.
     redirectBeforeChroot: boolean;
-    
+
     // Whether to mount `/proc` inside the sandbox.
     // The sandbox is under a PID namespace and the sandboxed program will see itself as PID 1.
     // The mounted `/proc` is corresponding to the PID namespace.
