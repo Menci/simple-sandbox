@@ -33,6 +33,7 @@ using std::string;
 using std::vector;
 using boost::format;
 
+// Make sure fd 0,1,2 exists.
 static void RedirectIO(const string &std_input, const string &std_output,
                        const string &std_error, int nullfd)
 {
@@ -121,21 +122,6 @@ static int ChildProcess(void *param_ptr)
         Ensure(mount(parameter.chrootDirectory.string().c_str(), tempRoot.string().c_str(), "", MS_BIND | MS_REC, ""));
         Ensure(mount("", tempRoot.string().c_str(), "", MS_BIND | MS_REMOUNT | MS_RDONLY | MS_REC, ""));
 
-        if (parameter.binaryDirectory != "")
-        {
-            Ensure(mount(parameter.binaryDirectory.string().c_str(),      // Source directory
-                         (tempRoot / fs::path("sandbox/binary")).c_str(), // Target Directory
-                         "", MS_BIND | MS_REC, ""));
-            Ensure(mount("", (tempRoot / fs::path("sandbox/binary")).c_str(), "",
-                         MS_BIND | MS_REMOUNT | MS_RDONLY | MS_REC, ""));
-        }
-        if (parameter.workingDirectory != "")
-        {
-            Ensure(mount(parameter.workingDirectory.string().c_str(),
-                         (tempRoot / fs::path("sandbox/working")).c_str(),
-                         "", MS_BIND | MS_REC, ""));
-        }
-
         Ensure(chroot(tempRoot.string().c_str()));
         Ensure(chdir("/sandbox/working"));
 
@@ -158,23 +144,8 @@ static int ChildProcess(void *param_ptr)
             Ensure(setuid(newUser->pw_uid));
         }
 
-        /*
-        std::vector<char *> paramCStrings;
-        for (size_t i = 0; i < parameter.executableParameters.size(); ++i)
-            paramCStrings.push_back(
-                const_cast<char *>(parameter.executableParameters[i].c_str()));
-        paramCStrings.push_back(nullptr);
-        */
         vector<char *> params = StringToPtr(parameter.executableParameters),
                        envi = StringToPtr(parameter.environmentVariables);
-
-        /*
-        // Pause here to let the parent to dd me to the cgroup.
-        // For some unknown reason, `raise(SIGSTOP)` won't work
-        // (return 0 but no effect, i.e. the process keeps running.)
-        // I changed to use semaphore, if you can help with this problem, please post an issue.
-        Ensure(kill(getpid(), SIGSTOP));
-        */
 
         int temp = -1;
         // Inform the parent that no exception occurred.
@@ -295,37 +266,6 @@ pid_t StartSandbox(const SandboxParameter &parameter
         // Wait for 1ms to prevent the child stack deallocated before execve.
         // TODO: Find a better way to handle this.
         usleep(1000);
-
-        /*
-        // `raise(SIGSTOP)` won't work as described above. We use semaphores instead.
-        int status;
-        Ensure(waitpid(container_pid, &status, WUNTRACED));
-        if (WIFSIGNALED(status))
-        {
-            throw std::runtime_error(
-                (format("The child process has been terminated before starting. Termination signal: %1%") % WTERMSIG(status)).str());
-        }
-        else if (WIFEXITED(status))
-        {
-            // Here, we know the child encounters some errors.
-            int errLen, bytesRead = Ensure(read(execParam.pipefd[0], &errLen, sizeof(int)));
-            if (WEXITSTATUS(status) != 126 || bytesRead == 0)
-            {
-                // No error information available.
-                throw std::runtime_error("The child process has exited unexpectedly.");
-            }
-            else
-            {
-                vector<char> buf(errLen + 1);
-                Ensure(read(execParam.pipefd[0], &*buf.begin(), errLen));
-                buf[errLen] = '\0';
-                string errstr(buf.begin(), buf.end());
-                throw std::runtime_error((format("The child process has reported the following error: %1%") % errstr).str());
-            }
-        }
-        // This is not killing, but just to send a continue signal to resume execution.
-        Ensure(kill(container_pid, SIGCONT));
-        */
 
         return container_pid;
     }
