@@ -224,6 +224,7 @@ NAN_METHOD(StartChild)
     param.redirectBeforeChroot = GET_BOOL(jsparam, redirectBeforeChroot);
     param.mountProc = GET_BOOL(jsparam, mountProc);
     param.chrootDirectory = fs::path(GET_STRING(jsparam, chroot));
+    param.workingDirectory = fs::path(GET_STRING(jsparam, workingDirectory));
     param.executablePath = GET_STRING(jsparam, executable);
     param.stdinRedirection = GET_STRING(jsparam, stdin);
     param.stdoutRedirection = GET_STRING(jsparam, stdout);
@@ -234,12 +235,12 @@ NAN_METHOD(StartChild)
     StringArrayToVector(PARAM(jsparam, parameters), param.executableParameters);
     StringArrayToVector(PARAM(jsparam, environments), param.environmentVariables);
     Local<Array> mounts = Local<Array>::Cast(PARAM(jsparam, mounts));
-    for (int i = 0; i < mounts->Length(); i++)
+    for (size_t i = 0; i < mounts->Length(); i++)
     {
         Local<Object> mntObj = Local<Object>::Cast(mounts->Get(i));
         MountInfo mnt;
-        mnt.src = GET_STRING(mntObj, src);
-        mnt.dst = GET_STRING(mntObj, dst);
+        mnt.src = fs::path(GET_STRING(mntObj, src));
+        mnt.dst = fs::path(GET_STRING(mntObj, dst));
         mnt.limit = GET_INT(mntObj, limit);
         param.mounts.push_back(mnt);
     }

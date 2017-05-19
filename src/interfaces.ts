@@ -5,6 +5,7 @@ export interface MountInfo {
     dst: string;
     // The maximum length (in bytes) the sandboxed process may write to the mount.
     // 0 for readonly; -1 for no limit.
+    // Length limit requires fuse and has not yet been implemented! (Readonly works, however)
     limit: number;
 }
 
@@ -80,6 +81,9 @@ export interface SandboxParameter {
     // Typically only the `PATH` environment variable is necessary.
     // You can have something like `['PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin']`.
     environments?: string[];
+
+    // This directory will be changed into (`chdir`) before running the binary.
+    workingDirectory: string;
 };
 
 export enum SandboxStatus {

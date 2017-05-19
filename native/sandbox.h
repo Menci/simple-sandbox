@@ -19,8 +19,13 @@ struct ExecutionResult
 
 struct MountInfo
 {
-    std::string src;
-    std::string dst;
+    // The source path on your host machine.
+    boost::filesystem::path src;
+    // The destination path in the sandbox.
+    // This path must exist, i.e. be `mkdir`ed in the chroot directory.
+    boost::filesystem::path dst;
+    // The maximum length (in bytes) the sandboxed process may write to the mount.
+    // 0 for readonly; -1 for no limit.
     int64_t limit;
 };
 
@@ -41,16 +46,19 @@ struct SandboxParameter
     bool redirectBeforeChroot;
     // Mount `/proc`?
     bool mountProc;
-    // This directory will be chrooted into before running our binary.
+    // This directory will be chrooted into (`chroot`) before running our binary.
     // Make sure this is not writable by `nobody` user!
-    // Make sure there are empty directory `/sandbox/binary` and `/sandbox/working` in the chroot directory.
     boost::filesystem::path chrootDirectory;
+    // This directory will be changed into (`chdir`) before running the binary.
+    boost::filesystem::path workingDirectory;
 
+    // The directories that will be mounted to the sandbox.
+    // See definition of MountInfo for details.
     std::vector<MountInfo> mounts;
 
     // This executable is the file that will be run.
     // You may specify your native binary (or file with #! interpreter)
-    // located in your binaryDirectory, such as `/sandbox/binary/a.out`,
+    // located in your mounted directory, such as `/sandbox/binary/a.out`,
     // or it may be an interpreter such as `/usr/bin/python` (this must be in your chroot filesystem)
     //
     // Tip: if you want to run a series of command,
