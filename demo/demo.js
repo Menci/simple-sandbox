@@ -12,21 +12,30 @@ const doThings = async () => {
     try {
         const sandboxedProcess = await sss.startSandbox({
             chroot: "/opt/sandbox-test/rootfs",
-            binary: "/opt/sandbox-test/binary",
-            working: "/opt/sandbox-test/working",
-            executable: "/bin/sh",
-            parameters: ["/bin/sh"],
+            mounts: [
+                {
+                    src: "/opt/sandbox-test/binary",
+                    dst: "/sandbox/binary",
+                    limit: 0
+                }, {
+                    src: "/opt/sandbox-test/working",
+                    dst: "/sandbox/working", 
+                    limit: 10240 * 1024
+                }],
+            executable: "/usr/bin/yes",
+            parameters: ["/usr/bin/yes"],
             environments: ["PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"],
-            stdin: "test.in",
-            stdout: "test.out",
-            stderr: "test.err",
-            time: 10000000,
+            stdin: "/dev/null",
+            stdout: "/dev/stdout",
+            stderr: "/dev/stdout",
+            time: 1000,
             mountProc: true,
-            redirectBeforeChroot: false,
+            redirectBeforeChroot: true,
             memory: 10240 * 1024, // 10MB
             process: 10,
             user: "nobody",
-            cgroup: "asdf"
+            cgroup: "asdf",
+            workingDirectory: "/sandbox/working"
         });
 
         console.log("Sandbox started, press enter to stop");
