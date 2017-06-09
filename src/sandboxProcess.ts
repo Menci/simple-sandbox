@@ -84,7 +84,7 @@ export class SandboxProcess {
         });
     }
 
-    private cleanup() {
+    private cleanup(): void {
         if (this.running) {
             if (this.cancellationToken) {
                 clearInterval(this.cancellationToken);
@@ -94,7 +94,7 @@ export class SandboxProcess {
         }
     }
 
-    stop() {
+    stop(): void {
         this.cancelled = true;
         try {
             process.kill(this.pid, "SIGKILL");
