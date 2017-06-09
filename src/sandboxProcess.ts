@@ -32,11 +32,15 @@ export class SandboxProcess extends events.EventEmitter {
         if (this.parameter.time != -1) {
             // Check every 50ms.
             const checkInterval = Math.min(this.parameter.time / 10, 50);
+            let lastCheck = new Date().getTime();
             this.cancellationToken = setInterval(() => {
+                let current = new Date().getTime();
+                const spent = current - lastCheck;
+                lastCheck = current;
                 const val: number = Number(sandboxAddon.GetCgroupProperty("cpuacct", myFather.parameter.cgroup, "cpuacct.usage"));
                 myFather.countedCpuTime += Math.max(
                     val - myFather.actualCpuTime,            // The real time, or if less than 40%,
-                    utils.milliToNano(checkInterval) * 0.4 // 40% of actually elapsed time
+                    utils.milliToNano(spent) * 0.4 // 40% of actually elapsed time
                 );
                 myFather.actualCpuTime = val;
 
