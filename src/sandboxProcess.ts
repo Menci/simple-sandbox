@@ -103,7 +103,7 @@ export class SandboxProcess extends events.EventEmitter {
         this.cleanup();
     }
 
-    waitForStop() {
+    waitForStop() : Promise<SandboxResult> {
         return new Promise((res, rej) => {
             this.on('exit', (status) => {
                 res(status);
