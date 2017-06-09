@@ -126,7 +126,6 @@ static int ChildProcess(void *param_ptr)
         for (MountInfo &info : parameter.mounts)
         {
             fs::path target = tempRoot / info.dst;
-            std::cerr << "Binding " << info.src << " to " << target << std::endl;
             Ensure(mount(info.src.string().c_str(), target.string().c_str(), "", MS_BIND | MS_REC, ""));
             if (info.limit == 0)
             {
@@ -139,7 +138,6 @@ static int ChildProcess(void *param_ptr)
         }
 
         Ensure(chroot(tempRoot.string().c_str()));
-        std::cerr << "Working: " << parameter.workingDirectory << std::endl;
         Ensure(chdir(parameter.workingDirectory.string().c_str()));
 
         if (parameter.mountProc)
@@ -173,7 +171,6 @@ static int ChildProcess(void *param_ptr)
         // Wait for parent's reply.
         execParam.semaphore2.Wait();
 
-std:: cerr << parameter.executablePath << std::endl;
         Ensure(execve(parameter.executablePath.c_str(), &params[0], &envi[0]));
 
         // If execve returns, then we meet an error.
@@ -194,7 +191,6 @@ std:: cerr << parameter.executablePath << std::endl;
             Ensure(write(execParam.pipefd[1], &len, sizeof(int)));
             Ensure(write(execParam.pipefd[1], errMessage, len));
             Ensure(close(execParam.pipefd[1]));
-            std::cerr << errMessage << std::endl;
             execParam.semaphore1.Post();
             return 126;
         }
