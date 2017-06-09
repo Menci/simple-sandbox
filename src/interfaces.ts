@@ -92,7 +92,8 @@ export enum SandboxStatus {
     TimeLimitExceeded = 2,
     MemoryLimitExceeded = 3,
     RuntimeError = 4,
-    Cancelled = 5
+    Cancelled = 5,
+    OutputLimitExceeded = 6
 };
 
 export interface SandboxResult {
