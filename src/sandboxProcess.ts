@@ -3,7 +3,7 @@ import sandboxAddon from './nativeAddon';
 import * as utils from './utils';
 import * as events from 'events';
 
-export class SandboxProcess extends events.EventEmitter {
+export class SandboxProcess {
     public readonly pid: number;
     public readonly parameter: SandboxParameter;
     private readonly cancellationToken: NodeJS.Timer = null;
@@ -13,13 +13,11 @@ export class SandboxProcess extends events.EventEmitter {
     private actualCpuTime: number = 0;
     private timeout: boolean = false;
     private cancelled: boolean = false;
-    private result: SandboxResult = null;
+    private waitPromise: Promise<SandboxResult> = null;
 
     public running: boolean = true;
 
     constructor(pid: number, parameter: SandboxParameter) {
-        super();
-
         this.pid = pid;
         this.parameter = parameter;
 
@@ -28,7 +26,6 @@ export class SandboxProcess extends events.EventEmitter {
         this.stopCallback = () => {
             myFather.stop();
         }
-        process.addListener('exit', this.stopCallback);
 
         if (this.parameter.time !== -1) {
             // Check every 50ms.
@@ -53,36 +50,37 @@ export class SandboxProcess extends events.EventEmitter {
             }, checkInterval);
         }
 
-        sandboxAddon.WaitForProcess(this.pid, (err, runResult) => {
-            if (err) {
-                myFather.stop();
-                myFather.emit('error', err);
-            } else {
-                myFather.cleanup();
-                const memUsage: number = Number(sandboxAddon.GetCgroupProperty("memory", myFather.parameter.cgroup, "memory.memsw.max_usage_in_bytes"));
+        this.waitPromise = new Promise((res, rej) => {
+            sandboxAddon.WaitForProcess(this.pid, (err, runResult) => {
+                if (err) {
+                    myFather.stop();
+                    rej(err);
+                } else {
+                    myFather.cleanup();
+                    const memUsage: number = Number(sandboxAddon.GetCgroupProperty("memory", myFather.parameter.cgroup, "memory.memsw.max_usage_in_bytes"));
 
-                let result: SandboxResult = {
-                    status: SandboxStatus.Unknown,
-                    time: myFather.actualCpuTime,
-                    memory: memUsage,
-                    code: runResult.code
-                };
+                    let result: SandboxResult = {
+                        status: SandboxStatus.Unknown,
+                        time: myFather.actualCpuTime,
+                        memory: memUsage,
+                        code: runResult.code
+                    };
 
-                if (myFather.timeout) {
-                    result.status = SandboxStatus.TimeLimitExceeded;
-                } else if (myFather.cancelled) {
-                    result.status = SandboxStatus.Cancelled;
-                } else if (myFather.parameter.memory != -1 && memUsage > myFather.parameter.memory) {
-                    result.status = SandboxStatus.MemoryLimitExceeded;
-                } else if (runResult.status === 'signaled') {
-                    result.status = SandboxStatus.RuntimeError;
-                } else if (runResult.status === 'exited') {
-                    result.status = SandboxStatus.OK;
+                    if (myFather.timeout) {
+                        result.status = SandboxStatus.TimeLimitExceeded;
+                    } else if (myFather.cancelled) {
+                        result.status = SandboxStatus.Cancelled;
+                    } else if (myFather.parameter.memory != -1 && memUsage > myFather.parameter.memory) {
+                        result.status = SandboxStatus.MemoryLimitExceeded;
+                    } else if (runResult.status === 'signaled') {
+                        result.status = SandboxStatus.RuntimeError;
+                    } else if (runResult.status === 'exited') {
+                        result.status = SandboxStatus.OK;
+                    }
+
+                    res(result);
                 }
-
-                this.result = result;
-                myFather.emit('exit', result);
-            }
+            });
         });
     }
 
@@ -104,18 +102,7 @@ export class SandboxProcess extends events.EventEmitter {
         this.cleanup();
     }
 
-    waitForStop(): Promise<SandboxResult> {
-        if (this.running) {
-            return new Promise((res, rej) => {
-                this.on('exit', (status) => {
-                    res(status);
-                });
-                this.on('error', (err) => {
-                    rej(err);
-                });
-            });
-        } else {
-            return Promise.resolve(this.result);
-        }
+    async waitForStop(): Promise<SandboxResult> {
+        return await this.waitPromise;
     }
 };
