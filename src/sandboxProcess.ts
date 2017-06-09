@@ -13,6 +13,7 @@ export class SandboxProcess extends events.EventEmitter {
     private actualCpuTime: number = 0;
     private timeout: boolean = false;
     private cancelled: boolean = false;
+    private result: SandboxResult = null;
 
     public running: boolean = true;
 
@@ -79,6 +80,7 @@ export class SandboxProcess extends events.EventEmitter {
                     result.status = SandboxStatus.OK;
                 }
 
+                this.result = result;
                 myFather.emit('exit', result);
             }
         });
@@ -102,14 +104,18 @@ export class SandboxProcess extends events.EventEmitter {
         this.cleanup();
     }
 
-    waitForStop() : Promise<SandboxResult> {
-        return new Promise((res, rej) => {
-            this.on('exit', (status) => {
-                res(status);
+    waitForStop(): Promise<SandboxResult> {
+        if (this.running) {
+            return new Promise((res, rej) => {
+                this.on('exit', (status) => {
+                    res(status);
+                });
+                this.on('error', (err) => {
+                    rej(err);
+                });
             });
-            this.on('error', (err) => {
-                rej(err);
-            });
-        });
+        } else {
+            return Promise.resolve(this.result);
+        }
     }
 };
