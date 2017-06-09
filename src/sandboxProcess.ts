@@ -97,7 +97,6 @@ export class SandboxProcess extends events.EventEmitter {
     stop() {
         this.cancelled = true;
         try {
-            console.log("KILLING " + this.pid);
             process.kill(this.pid, "SIGKILL");
         } catch (err) { }
         this.cleanup();
