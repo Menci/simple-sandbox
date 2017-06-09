@@ -29,7 +29,7 @@ export class SandboxProcess extends events.EventEmitter {
         }
         process.addListener('exit', this.stopCallback);
 
-        if (this.parameter.time != -1) {
+        if (this.parameter.time !== -1) {
             // Check every 50ms.
             const checkInterval = Math.min(this.parameter.time / 10, 50);
             let lastCheck = new Date().getTime();
@@ -73,9 +73,9 @@ export class SandboxProcess extends events.EventEmitter {
                     result.status = SandboxStatus.Cancelled;
                 } else if (myFather.parameter.memory != -1 && memUsage > myFather.parameter.memory) {
                     result.status = SandboxStatus.MemoryLimitExceeded;
-                } else if (runResult.status == 'signaled') {
+                } else if (runResult.status === 'signaled') {
                     result.status = SandboxStatus.RuntimeError;
-                } else if (runResult.status == 'exited') {
+                } else if (runResult.status === 'exited') {
                     result.status = SandboxStatus.OK;
                 }
 
