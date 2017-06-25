@@ -18,10 +18,10 @@ bool InitializeCgroup();
 
 void CreateGroup(const CgroupInfo &info);
 
-uint64_t ReadGroupProperty(const CgroupInfo &info, const std::string &property);
-std::list<uint64_t> ReadGroupPropertyArray(const CgroupInfo &info, const std::string &property);
+int64_t ReadGroupProperty(const CgroupInfo &info, const std::string &property);
+std::list<int64_t> ReadGroupPropertyArray(const CgroupInfo &info, const std::string &property);
 
-void WriteGroupProperty(const CgroupInfo &info, const std::string &property, uint64_t val, bool overwrite = true);
+void WriteGroupProperty(const CgroupInfo &info, const std::string &property, int64_t val, bool overwrite = true);
 void WriteGroupProperty(const CgroupInfo &info, const std::string &property, const std::string& val, bool overwrite = true);
 
 // Kill all existing tasks in a group.

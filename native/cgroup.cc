@@ -122,26 +122,26 @@ static void WriteFile(const fs::path &path, T val, bool overwrite)
     ofs << val << std::endl;
 }
 
-static void ReadArray64(const fs::path &path, list<uint64_t> &cc)
+static void ReadArray64(const fs::path &path, list<int64_t> &cc)
 {
     fs::ifstream ifs;
     // No fail bit; just ignore when failed.
     ifs.exceptions(std::ios::badbit);
     ifs.open(path);
     cc.clear();
-    uint64_t val;
+    int64_t val;
     while (ifs >> val)
     {
         cc.push_back(val);
     }
 }
 
-static uint64_t ReadInt64(const fs::path &path)
+static int64_t ReadInt64(const fs::path &path)
 {
     fs::ifstream ifs;
     ifs.exceptions(std::ios::failbit | std::ios::badbit);
     ifs.open(path);
-    uint64_t val;
+    int64_t val;
     ifs >> val;
     return val;
 }
@@ -159,16 +159,16 @@ void CreateGroup(const CgroupInfo &info)
     }
 }
 
-uint64_t ReadGroupProperty(const CgroupInfo &info, const string &property)
+int64_t ReadGroupProperty(const CgroupInfo &info, const string &property)
 {
     auto groupDir = EnsureGroup(info);
     return ReadInt64(groupDir / property);
 }
 
-list<uint64_t> ReadGroupPropertyArray(const CgroupInfo &info, const string &property)
+list<int64_t> ReadGroupPropertyArray(const CgroupInfo &info, const string &property)
 {
     auto groupDir = EnsureGroup(info);
-    list<uint64_t> val;
+    list<int64_t> val;
     ReadArray64(groupDir / property, val);
     return val;
 }
@@ -182,7 +182,7 @@ void KillGroupMembers(const CgroupInfo &info)
     }
 }
 
-void WriteGroupProperty(const CgroupInfo &info, const string &property, uint64_t val, bool overwrite)
+void WriteGroupProperty(const CgroupInfo &info, const string &property, int64_t val, bool overwrite)
 {
     auto groupDir = EnsureGroup(info);
     return WriteFile(groupDir / property, val, overwrite);

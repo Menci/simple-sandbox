@@ -248,9 +248,10 @@ pid_t StartSandbox(const SandboxParameter &parameter
 
         // Forcibly clear any memory usage by cache.
         WriteGroupProperty(memInfo, "memory.force_empty", 0);
-        WRITE_WITH_CHECK(memInfo, "memory.limit_in_bytes", 0);
-        WRITE_WITH_CHECK(memInfo, "memory.memsw.limit_in_bytes", parameter.memoryLimit);
+        WriteGroupProperty(memInfo, "memory.memsw.limit_in_bytes", -1);
+        WriteGroupProperty(memInfo, "memory.limit_in_bytes", -1);
         WRITE_WITH_CHECK(memInfo, "memory.limit_in_bytes", parameter.memoryLimit);
+        WRITE_WITH_CHECK(memInfo, "memory.memsw.limit_in_bytes", parameter.memoryLimit);
         WRITE_WITH_CHECK(pidInfo, "pids.max", parameter.processLimit);
 
         // Wait for at most 100ms. If the child process hasn't posted the semaphore,
