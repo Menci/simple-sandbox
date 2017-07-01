@@ -45,12 +45,19 @@ bool PosixSemaphore::TryWait()
     }
 }
 
-bool PosixSemaphore::TimedWait(time_t sec, long nsec)
+bool PosixSemaphore::TimedWait(long msecs)
 {
-    timespec tWait;
-    tWait.tv_sec = sec;
-    tWait.tv_nsec = nsec;
-    int result = sem_timedwait(m_semaphore, &tWait);
+    timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    long secs = msecs / 1000;
+    msecs = msecs % 1000;
+
+    long add = 0;
+    msecs = msecs * 1000 * 1000 + ts.tv_nsec;
+    add = msecs / (1000 * 1000 * 1000);
+    ts.tv_sec += (add + secs);
+    ts.tv_nsec = msecs % (1000 * 1000 * 1000);
+    int result = sem_timedwait(m_semaphore, &ts);
     if (result == 0)
     {
         return true;

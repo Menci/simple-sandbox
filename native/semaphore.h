@@ -10,7 +10,7 @@ public:
   void Wait();
   void Post();
   bool TryWait();
-  bool TimedWait(time_t sec, long nsec);
+  bool TimedWait(long msecs);
 
 private:
   sem_t *m_semaphore;
