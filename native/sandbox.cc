@@ -17,6 +17,7 @@
 #include <sys/types.h>
 #include <syscall.h>
 #include <pwd.h>
+#include <grp.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/mount.h>
@@ -38,6 +39,7 @@ using boost::format;
 static void RedirectIO(const string &std_input, const string &std_output,
                        const string &std_error, int nullfd)
 {
+    /*
     int inputfd, outputfd, errorfd;
     if (std_input != "")
     {
@@ -77,6 +79,7 @@ static void RedirectIO(const string &std_input, const string &std_output,
         errorfd = nullfd;
     }
     Ensure(dup2(errorfd, STDERR_FILENO));
+    */
 }
 
 struct ExecutionParameter
@@ -163,7 +166,10 @@ static int ChildProcess(void *param_ptr)
 
         if (newUser != nullptr)
         {
+            gid_t groupList[1];
+            groupList[0] = newUser->pw_gid;
             Ensure(syscall(SYS_setgid, newUser->pw_gid));
+            Ensure(syscall(SYS_setgroups, 1, groupList));
             Ensure(syscall(SYS_setuid, newUser->pw_uid));
         }
 
