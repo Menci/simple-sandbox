@@ -117,15 +117,15 @@ static int ChildProcess(void *param_ptr)
                        parameter.stderrRedirection, nullfd);
         }
 
-        // TODO: choose a better place for the temp path.
-        fs::path tempRoot("/tmp");
         Ensure(mount("none", "/", NULL, MS_REC | MS_PRIVATE, NULL)); // Make root private
-        Ensure(mount(parameter.chrootDirectory.string().c_str(), tempRoot.string().c_str(), "", MS_BIND | MS_REC, ""));
-        Ensure(mount("", tempRoot.string().c_str(), "", MS_BIND | MS_REMOUNT | MS_RDONLY | MS_REC, ""));
+
+        Ensure(mount(parameter.chrootDirectory.string().c_str(),
+                     parameter.chrootDirectory.string().c_str(), "", MS_BIND | MS_RDONLY | MS_REC, ""));
+        Ensure(mount("", parameter.chrootDirectory.string().c_str(), "", MS_BIND | MS_REMOUNT | MS_RDONLY | MS_REC, ""));
 
         for (MountInfo &info : parameter.mounts)
         {
-            fs::path target = tempRoot / info.dst;
+            fs::path target = parameter.chrootDirectory / info.dst;
             Ensure(mount(info.src.string().c_str(), target.string().c_str(), "", MS_BIND | MS_REC, ""));
             if (info.limit == 0)
             {
@@ -137,7 +137,7 @@ static int ChildProcess(void *param_ptr)
             }
         }
 
-        Ensure(chroot(tempRoot.string().c_str()));
+        Ensure(chroot(parameter.chrootDirectory.string().c_str()));
         Ensure(chdir(parameter.workingDirectory.string().c_str()));
 
         if (parameter.mountProc)
