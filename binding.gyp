@@ -14,7 +14,6 @@
       "libraries": [ 
         "-lboost_filesystem",
         "-lboost_system",
-        "-lfuse",
       ],
       "cflags": [
         "-std=c++11",
