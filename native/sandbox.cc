@@ -158,7 +158,7 @@ static int ChildProcess(void *param_ptr)
         {
             rlimit rlim;
             rlim.rlim_max = rlim.rlim_cur = parameter.stackSize != -1 ? parameter.stackSize : RLIM_INFINITY;
-            Ensure(setrlimit(RLIMIT_STACK, &rlim_new));
+            Ensure(setrlimit(RLIMIT_STACK, &rlim));
         }
 
         if (newUser != nullptr)
