@@ -167,9 +167,14 @@ static void StringArrayToVector(Local<Value> val, vector<string> &vec)
     }
 }
 
+static bool IsNullOrUndefined(const Local<Value> &val)
+{
+    return val->IsUndefined() || val->IsNull();
+}
+
 static string ValueToString(const Local<Value> &val)
 {
-    if (val->IsUndefined() || val->IsNull())
+    if (IsNullOrUndefined(val))
     {
         return string("");
     }
@@ -231,6 +236,14 @@ NAN_METHOD(StartChild)
     param.stderrRedirection = GET_STRING(jsparam, stderr);
     param.userName = GET_STRING(jsparam, user);
     param.cgroupName = GET_STRING(jsparam, cgroup);
+    if (IsNullOrUndefined(PARAM(jsparam, stackSize)))
+    {
+        param.stackSize = -2;
+    }
+    else
+    {
+        param.stackSize = GET_INT(jsparam, stackSize);
+    }
 
     StringArrayToVector(PARAM(jsparam, parameters), param.executableParameters);
     StringArrayToVector(PARAM(jsparam, environments), param.environmentVariables);

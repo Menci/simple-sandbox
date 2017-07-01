@@ -84,6 +84,10 @@ export interface SandboxParameter {
 
     // This directory will be changed into (`chdir`) before running the binary.
     workingDirectory: string;
+
+    // If set, a `setrlimit` will be run to limit the stack size.
+    // -1 indicates no limit.
+    stackSize?: number;
 };
 
 export enum SandboxStatus {

@@ -21,6 +21,7 @@
 #include <sys/resource.h>
 #include <sys/mount.h>
 #include <sys/wait.h>
+#include <sys/resource.h>
 
 #include "sandbox.h"
 #include "utils.h"
@@ -152,6 +153,13 @@ static int ChildProcess(void *param_ptr)
 
         const char *newHostname = "BraveNewWorld";
         Ensure(sethostname(newHostname, strlen(newHostname)));
+
+        if (parameter.stackSize != -2)
+        {
+            rlimit rlim;
+            rlim.rlim_max = rlim.rlim_cur = parameter.stackSize != -1 ? parameter.stackSize : RLIM_INFINITY;
+            Ensure(setrlimit(RLIMIT_STACK, &rlim_new));
+        }
 
         if (newUser != nullptr)
         {

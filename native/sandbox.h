@@ -32,8 +32,8 @@ struct MountInfo
 struct SandboxParameter
 {
     // Time limit is done by querying cpuacct cgroup every 100ms. This is done in the js code.
-    // int timeLimit;
 
+    int64_t stackSize;
     // Memory limit in bytes.
     // -1 for no limit.
     int64_t memoryLimit;
