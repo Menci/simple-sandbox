@@ -155,8 +155,8 @@ static int ChildProcess(void *param_ptr)
 
         if (newUser != nullptr)
         {
-            Ensure(setgid(newUser->pw_gid));
-            Ensure(setuid(newUser->pw_uid));
+            Ensure(syscall(SYS_setgid, newUser->pw_gid));
+            Ensure(syscall(SYS_setuid, newUser->pw_uid));
         }
 
         vector<char *> params = StringToPtr(parameter.executableParameters),
