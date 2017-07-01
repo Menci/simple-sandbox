@@ -255,7 +255,7 @@ pid_t StartSandbox(const SandboxParameter &parameter
     }
 
         // Forcibly clear any memory usage by cache.
-        WriteGroupProperty(memInfo, "memory.force_empty", 0);
+        // WriteGroupProperty(memInfo, "memory.force_empty", 0); // This is too slow!!!!
         WriteGroupProperty(memInfo, "memory.memsw.limit_in_bytes", -1);
         WriteGroupProperty(memInfo, "memory.limit_in_bytes", -1);
         WRITE_WITH_CHECK(memInfo, "memory.limit_in_bytes", parameter.memoryLimit);
