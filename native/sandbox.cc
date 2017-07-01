@@ -39,7 +39,6 @@ using boost::format;
 static void RedirectIO(const string &std_input, const string &std_output,
                        const string &std_error, int nullfd)
 {
-    /*
     int inputfd, outputfd, errorfd;
     if (std_input != "")
     {
@@ -79,7 +78,6 @@ static void RedirectIO(const string &std_input, const string &std_output,
         errorfd = nullfd;
     }
     Ensure(dup2(errorfd, STDERR_FILENO));
-    */
 }
 
 struct ExecutionParameter
