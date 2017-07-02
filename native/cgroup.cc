@@ -173,6 +173,24 @@ list<int64_t> ReadGroupPropertyArray(const CgroupInfo &info, const string &prope
     return val;
 }
 
+map<string, int64_t> ReadGroupPropertyMap(const CgroupInfo &info, const string &property)
+{
+    auto groupDir = EnsureGroup(info);
+    map<string, int64_t> result;
+    fs::ifstream ifs;
+    ifs.exceptions(std::ios::badbit);
+    ifs.open(groupDir / property);
+    while (ifs)
+    {
+        string name;
+        ifs >> name;
+        int64_t val;
+        ifs >> val;
+        result.insert(std::pair<string, int64_t>(name, val));
+    }
+    return result;
+}
+
 void KillGroupMembers(const CgroupInfo &info)
 {
     auto v = ReadGroupPropertyArray(info, "tasks");

@@ -5,6 +5,7 @@
 
 #include <string>
 #include <list>
+#include <map>
 
 struct CgroupInfo
 {
@@ -20,6 +21,7 @@ void CreateGroup(const CgroupInfo &info);
 
 int64_t ReadGroupProperty(const CgroupInfo &info, const std::string &property);
 std::list<int64_t> ReadGroupPropertyArray(const CgroupInfo &info, const std::string &property);
+std::map<std::string, int64_t> ReadGroupPropertyMap(const CgroupInfo &info, const std::string &property);
 
 void WriteGroupProperty(const CgroupInfo &info, const std::string &property, int64_t val, bool overwrite = true);
 void WriteGroupProperty(const CgroupInfo &info, const std::string &property, const std::string& val, bool overwrite = true);

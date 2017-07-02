@@ -1,4 +1,5 @@
 #include <nan.h>
+#include <map>
 #include <vector>
 #include <string>
 #include <functional>
@@ -15,6 +16,7 @@
 using boost::format;
 using std::vector;
 using std::string;
+using std::map;
 
 using v8::Local;
 using v8::Array;
@@ -184,6 +186,26 @@ static string ValueToString(const Local<Value> &val)
     }
 }
 
+NAN_METHOD(GetCgroupProperty2)
+{
+    string controllerName = ValueToString(info[0]);
+    string cgroupName = ValueToString(info[1]);
+    string propertyName = ValueToString(info[2]);
+    string subPropertyName = ValueToString(info[3]);
+    int64_t val;
+    try
+    {
+        CgroupInfo cginfo(controllerName, cgroupName);
+        val = ReadGroupPropertyMap(cginfo, propertyName)[subPropertyName];
+    }
+    catch (std::exception &ex)
+    {
+        ThrowTypeError(ex.what());
+        return;
+    }
+    // v8 doesn't support 64-bit integer, so let's use string.
+    info.GetReturnValue().Set(STR(std::to_string(val)));
+}
 NAN_METHOD(GetCgroupProperty)
 {
     string controllerName = ValueToString(info[0]);
@@ -287,6 +309,7 @@ NAN_MODULE_INIT(Init)
 
     NAN_EXPORT(target, StartChild);
     NAN_EXPORT(target, GetCgroupProperty);
+    NAN_EXPORT(target, GetCgroupProperty2);
     NAN_EXPORT(target, WaitForProcess);
 }
 

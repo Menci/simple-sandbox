@@ -57,7 +57,9 @@ export class SandboxProcess {
                     rej(err);
                 } else {
                     myFather.cleanup();
-                    const memUsage: number = Number(sandboxAddon.GetCgroupProperty("memory", myFather.parameter.cgroup, "memory.memsw.max_usage_in_bytes"));
+                    const memUsageWithCache: number = Number(sandboxAddon.GetCgroupProperty("memory", myFather.parameter.cgroup, "memory.memsw.max_usage_in_bytes"));
+                    const cache: number = Number(sandboxAddon.GetCgroupProperty2("memory", myFather.parameter.cgroup, "memory.stat", "cache"));
+                    const memUsage = memUsageWithCache - cache;
 
                     let result: SandboxResult = {
                         status: SandboxStatus.Unknown,
