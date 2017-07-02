@@ -1,6 +1,6 @@
 {
   "name": "simple-sandbox",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "A simple sandbox for Node.js using Linux namespaces and cgroup.",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
