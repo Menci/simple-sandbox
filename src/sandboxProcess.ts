@@ -68,7 +68,7 @@ export class SandboxProcess {
                         code: runResult.code
                     };
 
-                    if (myFather.timeout) {
+                    if (myFather.timeout || myFather.actualCpuTime > parameter.time) {
                         result.status = SandboxStatus.TimeLimitExceeded;
                     } else if (myFather.cancelled) {
                         result.status = SandboxStatus.Cancelled;
