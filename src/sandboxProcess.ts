@@ -40,11 +40,12 @@ export class SandboxProcess {
             this.cleanupErrCallback = rej;
         })
 
+        let checkIfTimedOut = () => {};
         if (this.parameter.time !== -1) {
             // Check every 50ms.
             const checkInterval = Math.min(this.parameter.time / 10, 50);
             let lastCheck = new Date().getTime();
-            this.cancellationToken = setInterval(() => {
+            checkIfTimedOut = () => {
                 let current = new Date().getTime();
                 const spent = current - lastCheck;
                 lastCheck = current;
@@ -60,7 +61,8 @@ export class SandboxProcess {
                     myFather.timeout = true;
                     myFather.stop();
                 }
-            }, checkInterval);
+            };
+            this.cancellationToken = setInterval(checkIfTimedOut, checkInterval);
         }
 
         this.waitPromise = new Promise((res, rej) => {
@@ -73,6 +75,7 @@ export class SandboxProcess {
                     const cache: number = Number(sandboxAddon.GetCgroupProperty2("memory", myFather.parameter.cgroup, "memory.stat", "cache"));
                     const memUsage = memUsageWithCache - cache;
 
+                    checkIfTimedOut();
                     myFather.cleanup();
 
                     let result: SandboxResult = {
@@ -82,7 +85,7 @@ export class SandboxProcess {
                         code: runResult.code
                     };
 
-                    if (myFather.timeout || myFather.actualCpuTime > utils.milliToNano(parameter.time)) {
+                    if (myFather.timeout) {
                         result.status = SandboxStatus.TimeLimitExceeded;
                     } else if (myFather.cancelled) {
                         result.status = SandboxStatus.Cancelled;
