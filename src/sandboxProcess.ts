@@ -69,6 +69,7 @@ export class SandboxProcess {
             sandboxAddon.WaitForProcess(this.pid, (err, runResult) => {
                 if (err) {
                     myFather.stop();
+                    myFather.cleanup();
                     rej(err);
                 } else {
                     const memUsageWithCache: number = Number(sandboxAddon.GetCgroupProperty("memory", myFather.parameter.cgroup, "memory.memsw.max_usage_in_bytes"));
@@ -126,7 +127,6 @@ export class SandboxProcess {
         try {
             process.kill(this.pid, "SIGKILL");
         } catch (err) { }
-        this.cleanup();
     }
 
     async waitForStop(): Promise<SandboxResult> {
