@@ -38,6 +38,51 @@ using Nan::AsyncWorker;
 #define NUM(_value_) Nan::New<Number>(_value_)
 namespace fs = boost::filesystem;
 
+class RemoveCgroupWorker : public AsyncWorker
+{
+  public:
+    RemoveCgroupWorker(Callback *callback, CgroupInfo &info) : AsyncWorker(callback), m_info(info)
+    {
+    }
+
+    void Execute()
+    {
+        try
+        {
+            RemoveCgroup(m_info);
+        }
+        catch (std::exception &ex)
+        {
+            SetErrorMessage(ex.what());
+        }
+        catch (...)
+        {
+            SetErrorMessage("Something unexpected occurred while killing cgroup");
+        }
+    }
+
+    void HandleOKCallback()
+    {
+        HandleScope scope;
+
+        Local<Value> argv[] = {Nan::Null(), Nan::Null()};
+        callback->Call(2, argv);
+    }
+
+    void HandleErrorCallback()
+    {
+        HandleScope scope;
+
+        Local<Value> argv[] = {
+            Nan::Error(ErrorMessage()),
+            Nan::Null()};
+        callback->Call(2, argv);
+    }
+
+  private:
+    CgroupInfo m_info;
+};
+
 class WaitForProcessWorker : public AsyncWorker
 {
   public:
@@ -206,6 +251,7 @@ NAN_METHOD(GetCgroupProperty2)
     // v8 doesn't support 64-bit integer, so let's use string.
     info.GetReturnValue().Set(STR(std::to_string(val)));
 }
+
 NAN_METHOD(GetCgroupProperty)
 {
     string controllerName = ValueToString(info[0]);
@@ -224,6 +270,23 @@ NAN_METHOD(GetCgroupProperty)
     }
     // v8 doesn't support 64-bit integer, so let's use string.
     info.GetReturnValue().Set(STR(std::to_string(val)));
+}
+
+NAN_METHOD(RemoveCgroup)
+{
+    string controllerName = ValueToString(info[0]);
+    string cgroupName = ValueToString(info[1]);
+    try
+    {
+        CgroupInfo cginfo(controllerName, cgroupName);
+        Callback *callback = new Callback(info[2].As<Function>());
+        AsyncQueueWorker(new RemoveCgroupWorker(callback, cginfo));
+    }
+    catch (std::exception &ex)
+    {
+        ThrowTypeError(ex.what());
+        return;
+    }
 }
 
 NAN_METHOD(StartChild)
@@ -310,6 +373,7 @@ NAN_MODULE_INIT(Init)
     NAN_EXPORT(target, StartChild);
     NAN_EXPORT(target, GetCgroupProperty);
     NAN_EXPORT(target, GetCgroupProperty2);
+    NAN_EXPORT(target, RemoveCgroup);
     NAN_EXPORT(target, WaitForProcess);
 }
 

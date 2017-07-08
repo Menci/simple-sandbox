@@ -25,6 +25,7 @@ std::map<std::string, int64_t> ReadGroupPropertyMap(const CgroupInfo &info, cons
 
 void WriteGroupProperty(const CgroupInfo &info, const std::string &property, int64_t val, bool overwrite = true);
 void WriteGroupProperty(const CgroupInfo &info, const std::string &property, const std::string& val, bool overwrite = true);
+void RemoveCgroup(const CgroupInfo &info);
 
 // Kill all existing tasks in a group.
 void KillGroupMembers(const CgroupInfo &info);

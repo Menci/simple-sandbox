@@ -2,6 +2,9 @@ import { SandboxParameter, SandboxResult, SandboxStatus } from './interfaces';
 import sandboxAddon from './nativeAddon';
 import * as utils from './utils';
 import * as events from 'events';
+import * as util from 'util';
+
+const removeCgroup = util.promisify(sandboxAddon.RemoveCgroup);
 
 export class SandboxProcess {
     public readonly pid: number;
@@ -15,6 +18,11 @@ export class SandboxProcess {
     private cancelled: boolean = false;
     private waitPromise: Promise<SandboxResult> = null;
 
+    // A nasty hack
+    private cleanupPromise: Promise<void>;
+    private cleanupCallback: () => void;
+    private cleanupErrCallback: (err: Error) => void;
+
     public running: boolean = true;
 
     constructor(pid: number, parameter: SandboxParameter) {
@@ -26,6 +34,11 @@ export class SandboxProcess {
         this.stopCallback = () => {
             myFather.stop();
         }
+
+        this.cleanupPromise = new Promise<void>((res, rej) => {
+            this.cleanupCallback = res;
+            this.cleanupErrCallback = rej;
+        })
 
         if (this.parameter.time !== -1) {
             // Check every 50ms.
@@ -56,10 +69,11 @@ export class SandboxProcess {
                     myFather.stop();
                     rej(err);
                 } else {
-                    myFather.cleanup();
                     const memUsageWithCache: number = Number(sandboxAddon.GetCgroupProperty("memory", myFather.parameter.cgroup, "memory.memsw.max_usage_in_bytes"));
                     const cache: number = Number(sandboxAddon.GetCgroupProperty2("memory", myFather.parameter.cgroup, "memory.stat", "cache"));
                     const memUsage = memUsageWithCache - cache;
+
+                    myFather.cleanup();
 
                     let result: SandboxResult = {
                         status: SandboxStatus.Unknown,
@@ -86,12 +100,20 @@ export class SandboxProcess {
         });
     }
 
+    private removeCgroup(): void {
+        Promise.all([removeCgroup("memory", this.parameter.cgroup),
+        removeCgroup("cpuacct", this.parameter.cgroup),
+        removeCgroup("pids", this.parameter.cgroup)])
+            .then(() => { this.cleanupCallback(); }, (err) => { this.cleanupErrCallback(err); });
+    }
+
     private cleanup(): void {
         if (this.running) {
             if (this.cancellationToken) {
                 clearInterval(this.cancellationToken);
             }
             process.removeListener('exit', this.stopCallback);
+            this.removeCgroup();
             this.running = false;
         }
     }
@@ -106,5 +128,9 @@ export class SandboxProcess {
 
     async waitForStop(): Promise<SandboxResult> {
         return await this.waitPromise;
+    }
+
+    async waitForCleanedUp(): Promise<void> {
+        await this.cleanupPromise;
     }
 };

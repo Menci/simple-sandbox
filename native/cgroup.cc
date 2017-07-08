@@ -12,6 +12,7 @@
 #include <boost/format.hpp>
 
 #include <mntent.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <signal.h>
 #include <string.h>
@@ -151,7 +152,7 @@ void CreateGroup(const CgroupInfo &info)
     auto groupDirectory = GetPath(info.Controller) / info.Group;
     if (!fs::exists(groupDirectory))
     {
-        fs::create_directory(groupDirectory);
+        fs::create_directories(groupDirectory);
     }
     else if (!fs::is_directory(groupDirectory))
     {
@@ -198,6 +199,13 @@ void KillGroupMembers(const CgroupInfo &info)
     {
         Ensure(kill((int)(item), SIGKILL));
     }
+}
+
+void RemoveCgroup(const CgroupInfo &info)
+{
+    KillGroupMembers(info);
+    auto groupDir = EnsureGroup(info);
+    rmdir(groupDir.c_str());
 }
 
 void WriteGroupProperty(const CgroupInfo &info, const string &property, int64_t val, bool overwrite)
