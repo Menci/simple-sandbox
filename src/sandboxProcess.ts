@@ -40,7 +40,7 @@ export class SandboxProcess {
             this.cleanupErrCallback = rej;
         })
 
-        let checkIfTimedOut = () => {};
+        let checkIfTimedOut = () => { };
         if (this.parameter.time !== -1) {
             // Check every 50ms.
             const checkInterval = Math.min(this.parameter.time / 10, 50);
@@ -76,7 +76,7 @@ export class SandboxProcess {
                     const cache: number = Number(sandboxAddon.GetCgroupProperty2("memory", myFather.parameter.cgroup, "memory.stat", "cache"));
                     const memUsage = memUsageWithCache - cache;
 
-                    checkIfTimedOut();
+                    myFather.actualCpuTime = Number(sandboxAddon.GetCgroupProperty("cpuacct", myFather.parameter.cgroup, "cpuacct.usage"));
                     myFather.cleanup();
 
                     let result: SandboxResult = {
@@ -86,7 +86,7 @@ export class SandboxProcess {
                         code: runResult.code
                     };
 
-                    if (myFather.timeout) {
+                    if (myFather.timeout || myFather.actualCpuTime > utils.milliToNano(myFather.parameter.time)) {
                         result.status = SandboxStatus.TimeLimitExceeded;
                     } else if (myFather.cancelled) {
                         result.status = SandboxStatus.Cancelled;
