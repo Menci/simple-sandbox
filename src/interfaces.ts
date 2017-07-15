@@ -57,9 +57,9 @@ export interface SandboxParameter {
     // or else it will be relative to the working directory of the sandbox (relative path specified),
     // or absolute path in the sandbox (absolute path specified).
     // If it is not specified, the stdio will be redirected to /dev/null.
-    stdin?: string;
-    stdout?: string;
-    stderr?: string;
+    stdin?: string | Number;
+    stdout?: string | Number;
+    stderr?: string | Number;
 
     // The user to run the sandboxed program with.
     // Please make sure that this user have the read permission to the chroot and binary directory,

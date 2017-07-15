@@ -316,9 +316,22 @@ NAN_METHOD(StartChild)
     param.chrootDirectory = fs::path(GET_STRING(jsparam, chroot));
     param.workingDirectory = fs::path(GET_STRING(jsparam, workingDirectory));
     param.executablePath = GET_STRING(jsparam, executable);
-    param.stdinRedirection = GET_STRING(jsparam, stdin);
-    param.stdoutRedirection = GET_STRING(jsparam, stdout);
-    param.stderrRedirection = GET_STRING(jsparam, stderr);
+
+#define SET_REDIRECTION(_name_)                                             \
+    if (PARAM(jsparam, _name_)->IsNumber())                                 \
+    {                                                                       \
+        param._name_##RedirectionFileDescriptor = GET_INT(jsparam, _name_); \
+    }                                                                       \
+    else                                                                    \
+    {                                                                       \
+        param._name_##RedirectionFileDescriptor = -1;                       \
+        param._name_##Redirection = GET_STRING(jsparam, _name_);            \
+    }
+
+    SET_REDIRECTION(stdin);
+    SET_REDIRECTION(stdout);
+    SET_REDIRECTION(stderr);
+
     param.userName = GET_STRING(jsparam, user);
     param.cgroupName = GET_STRING(jsparam, cgroup);
     if (IsNullOrUndefined(PARAM(jsparam, stackSize)))

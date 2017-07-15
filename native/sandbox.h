@@ -77,6 +77,12 @@ struct SandboxParameter
     // Same as above.
     std::string stderrRedirection;
 
+    // If set to -1, the sandbox will try to open the files in the strings above;
+    // If set to others, the values will be used as the IOs.
+    int stdinRedirectionFileDescriptor;
+    int stdoutRedirectionFileDescriptor;
+    int stderrRedirectionFileDescriptor;
+
     // The user the guest executable will be run as. 
     // Please don't share users among sandboxes, 
     // i.e. use a DISTINCTIVE user for EACH sandbox. The process limit is on each user, not each session.

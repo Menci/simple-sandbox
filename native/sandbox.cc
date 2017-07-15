@@ -37,46 +37,70 @@ using std::vector;
 using boost::format;
 
 // Make sure fd 0,1,2 exists.
-static void RedirectIO(const string &std_input, const string &std_output,
-                       const string &std_error, int nullfd)
+static void RedirectIO(const SandboxParameter &param, int nullfd)
 {
+    const string &std_input = param.stdinRedirection,
+                 std_output = param.stdoutRedirection,
+                 std_error = param.stderrRedirection;
+
     int inputfd, outputfd, errorfd;
-    if (std_input != "")
+    if (param.stdinRedirectionFileDescriptor == -1)
     {
-        inputfd = Ensure(open(std_input.c_str(), O_RDONLY));
-    }
-    else
-    {
-        inputfd = nullfd;
-    }
-    Ensure(dup2(inputfd, STDIN_FILENO));
-
-    if (std_output != "")
-    {
-        outputfd = Ensure(open(std_output.c_str(), O_WRONLY | O_TRUNC | O_CREAT,
-                               S_IWUSR | S_IRUSR | S_IRGRP | S_IWGRP));
-    }
-    else
-    {
-        outputfd = nullfd;
-    }
-    Ensure(dup2(outputfd, STDOUT_FILENO));
-
-    if (std_error != "")
-    {
-        if (std_error == std_output)
+        if (std_input != "")
         {
-            errorfd = outputfd;
+            inputfd = Ensure(open(std_input.c_str(), O_RDONLY));
         }
         else
         {
-            errorfd = Ensure(open(std_error.c_str(), O_WRONLY | O_TRUNC | O_CREAT,
-                                  S_IWUSR | S_IRUSR | S_IRGRP | S_IWGRP));
+            inputfd = nullfd;
         }
     }
     else
     {
-        errorfd = nullfd;
+        inputfd = param.stdinRedirectionFileDescriptor;
+    }
+    Ensure(dup2(inputfd, STDIN_FILENO));
+
+    if (param.stdoutRedirectionFileDescriptor == -1)
+    {
+        if (std_output != "")
+        {
+            outputfd = Ensure(open(std_output.c_str(), O_WRONLY | O_TRUNC | O_CREAT,
+                                   S_IWUSR | S_IRUSR | S_IRGRP | S_IWGRP));
+        }
+        else
+        {
+            outputfd = nullfd;
+        }
+    }
+    else
+    {
+        outputfd = param.stdoutRedirectionFileDescriptor;
+    }
+    Ensure(dup2(outputfd, STDOUT_FILENO));
+
+    if (param.stderrRedirectionFileDescriptor != -1)
+    {
+        if (std_error != "")
+        {
+            if (std_error == std_output)
+            {
+                errorfd = outputfd;
+            }
+            else
+            {
+                errorfd = Ensure(open(std_error.c_str(), O_WRONLY | O_TRUNC | O_CREAT,
+                                      S_IWUSR | S_IRUSR | S_IRGRP | S_IWGRP));
+            }
+        }
+        else
+        {
+            errorfd = nullfd;
+        }
+    }
+    else
+    {
+        errorfd = param.stderrRedirectionFileDescriptor;
     }
     Ensure(dup2(errorfd, STDERR_FILENO));
 }
@@ -116,8 +140,7 @@ static int ChildProcess(void *param_ptr)
         int nullfd = Ensure(open("/dev/null", O_RDWR));
         if (parameter.redirectBeforeChroot)
         {
-            RedirectIO(parameter.stdinRedirection, parameter.stdoutRedirection,
-                       parameter.stderrRedirection, nullfd);
+            RedirectIO(parameter, nullfd);
         }
 
         Ensure(mount("none", "/", NULL, MS_REC | MS_PRIVATE, NULL)); // Make root private
@@ -149,8 +172,7 @@ static int ChildProcess(void *param_ptr)
         }
         if (!parameter.redirectBeforeChroot)
         {
-            RedirectIO(parameter.stdinRedirection, parameter.stdoutRedirection,
-                       parameter.stderrRedirection, nullfd);
+            RedirectIO(parameter, nullfd);
         }
 
         const char *newHostname = "BraveNewWorld";
