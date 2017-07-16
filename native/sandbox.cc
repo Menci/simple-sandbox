@@ -79,7 +79,7 @@ static void RedirectIO(const SandboxParameter &param, int nullfd)
     }
     Ensure(dup2(outputfd, STDOUT_FILENO));
 
-    if (param.stderrRedirectionFileDescriptor != -1)
+    if (param.stderrRedirectionFileDescriptor == -1)
     {
         if (std_error != "")
         {
