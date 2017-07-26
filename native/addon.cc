@@ -8,8 +8,6 @@
 #include <boost/format.hpp>
 #include <boost/filesystem.hpp>
 
-#include <libcgroup.h>
-
 #include "sandbox.h"
 #include "cgroup.h"
 

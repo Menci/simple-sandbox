@@ -9,7 +9,6 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
-#include <libcgroup.h>
 
 #include <fcntl.h>
 #include <sched.h>
