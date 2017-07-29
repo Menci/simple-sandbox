@@ -1,5 +1,4 @@
-const milliToNano = function (milliseconds: number): number {
-    return milliseconds * 1024 * 1024;
+export function milliToNano(milliseconds: number): number {
+    return milliseconds * 1000 * 1000;
 }
 
-export { milliToNano };
