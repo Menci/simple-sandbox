@@ -4,6 +4,7 @@
 #include <system_error>
 #include <vector>
 #include <map>
+#include <stdexcept>
 
 #include <cstring>
 
@@ -120,6 +121,17 @@ struct ExecutionParameter
     }
 };
 
+static void EnsureDirectoryExistance(fs::path dir) {
+    if (!fs::exists(dir))
+    {
+        throw std::runtime_error((format("The specified path %1% does not exist.") % dir).str());
+    }
+    if (!fs::is_directory(dir))
+    {
+        throw std::runtime_error((format("The specified path %1% exists, but is not a directory.") % dir).str());
+    }
+}
+
 static int ChildProcess(void *param_ptr)
 {
     ExecutionParameter &execParam = *reinterpret_cast<ExecutionParameter *>(param_ptr);
@@ -144,6 +156,7 @@ static int ChildProcess(void *param_ptr)
 
         Ensure(mount("none", "/", NULL, MS_REC | MS_PRIVATE, NULL)); // Make root private
 
+        EnsureDirectoryExistance(parameter.chrootDirectory);
         Ensure(mount(parameter.chrootDirectory.string().c_str(),
                      parameter.chrootDirectory.string().c_str(), "", MS_BIND | MS_RDONLY | MS_REC, ""));
         Ensure(mount("", parameter.chrootDirectory.string().c_str(), "", MS_BIND | MS_REMOUNT | MS_RDONLY | MS_REC, ""));
@@ -151,6 +164,9 @@ static int ChildProcess(void *param_ptr)
         for (MountInfo &info : parameter.mounts)
         {
             fs::path target = parameter.chrootDirectory / info.dst;
+	    
+            EnsureDirectoryExistance(info.src);
+            EnsureDirectoryExistance(target);
             Ensure(mount(info.src.string().c_str(), target.string().c_str(), "", MS_BIND | MS_REC, ""));
             if (info.limit == 0)
             {
