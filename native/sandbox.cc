@@ -306,7 +306,7 @@ pid_t StartSandbox(const SandboxParameter &parameter
 
         // Wait for at most 100ms. If the child process hasn't posted the semaphore,
         // We will assume that the child has already dead.
-        bool waitResult = execParam.semaphore1.TimedWait(100);
+        bool waitResult = execParam.semaphore1.TimedWait(500);
 
         int errLen, bytesRead = read(execParam.pipefd[0], &errLen, sizeof(int));
         // Child will be killed once the error has been thrown.
