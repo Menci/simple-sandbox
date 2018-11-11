@@ -42,7 +42,7 @@ T EnsureNot(T ret, T err, const std::string &msg)
 template <typename... Args>
 int ptrace_e(Args... args)
 {
-    return Ensure(ptrace(args...));
+    return ENSURE(ptrace(args...));
 }
 
 template <typename T>
@@ -57,6 +57,5 @@ T CheckNull_Custom(T val, const char *operation)
 
 std::vector<char *> StringToPtr(const std::vector<std::string> &original);
 
-// TODO: replace these to uppercase.
-#define CheckNull(value) CheckNull_Custom(value, #value)
-#define Ensure(value) (__Ensure((value), __FILE__, __LINE__, #value))
+#define CHECKNULL(value) CheckNull_Custom(value, #value)
+#define ENSURE(value) (__Ensure((value), __FILE__, __LINE__, #value))

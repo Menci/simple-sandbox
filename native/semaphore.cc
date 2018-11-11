@@ -15,17 +15,17 @@ PosixSemaphore::PosixSemaphore(bool interprocess, int initialValue)
     EnsureNot(result, MAP_FAILED, "Mapping memory for semaphore");
 
     m_semaphore = reinterpret_cast<sem_t *>(result);
-    Ensure(sem_init(m_semaphore, interprocess ? 1 : 0, initialValue));
+    ENSURE(sem_init(m_semaphore, interprocess ? 1 : 0, initialValue));
 }
 
 void PosixSemaphore::Post()
 {
-    Ensure(sem_post(m_semaphore));
+    ENSURE(sem_post(m_semaphore));
 }
 
 void PosixSemaphore::Wait()
 {
-    Ensure(sem_wait(m_semaphore));
+    ENSURE(sem_wait(m_semaphore));
 }
 
 bool PosixSemaphore::TryWait()
