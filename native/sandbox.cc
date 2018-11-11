@@ -48,7 +48,7 @@ static void RedirectIO(const SandboxParameter &param, int nullfd)
     {
         if (std_input != "")
         {
-            inputfd = Ensure(open(std_input.c_str(), O_RDONLY));
+            inputfd = ENSURE(open(std_input.c_str(), O_RDONLY));
         }
         else
         {
@@ -59,13 +59,13 @@ static void RedirectIO(const SandboxParameter &param, int nullfd)
     {
         inputfd = param.stdinRedirectionFileDescriptor;
     }
-    Ensure(dup2(inputfd, STDIN_FILENO));
+    ENSURE(dup2(inputfd, STDIN_FILENO));
 
     if (param.stdoutRedirectionFileDescriptor == -1)
     {
         if (std_output != "")
         {
-            outputfd = Ensure(open(std_output.c_str(), O_WRONLY | O_TRUNC | O_CREAT,
+            outputfd = ENSURE(open(std_output.c_str(), O_WRONLY | O_TRUNC | O_CREAT,
                                    S_IWUSR | S_IRUSR | S_IRGRP | S_IWGRP));
         }
         else
@@ -77,7 +77,7 @@ static void RedirectIO(const SandboxParameter &param, int nullfd)
     {
         outputfd = param.stdoutRedirectionFileDescriptor;
     }
-    Ensure(dup2(outputfd, STDOUT_FILENO));
+    ENSURE(dup2(outputfd, STDOUT_FILENO));
 
     if (param.stderrRedirectionFileDescriptor == -1)
     {
@@ -89,7 +89,7 @@ static void RedirectIO(const SandboxParameter &param, int nullfd)
             }
             else
             {
-                errorfd = Ensure(open(std_error.c_str(), O_WRONLY | O_TRUNC | O_CREAT,
+                errorfd = ENSURE(open(std_error.c_str(), O_WRONLY | O_TRUNC | O_CREAT,
                                       S_IWUSR | S_IRUSR | S_IRGRP | S_IWGRP));
             }
         }
@@ -102,7 +102,7 @@ static void RedirectIO(const SandboxParameter &param, int nullfd)
     {
         errorfd = param.stderrRedirectionFileDescriptor;
     }
-    Ensure(dup2(errorfd, STDERR_FILENO));
+    ENSURE(dup2(errorfd, STDERR_FILENO));
 }
 
 struct ExecutionParameter
@@ -140,26 +140,26 @@ static int ChildProcess(void *param_ptr)
 
     try
     {
-        Ensure(close(execParam.pipefd[0]));
+        ENSURE(close(execParam.pipefd[0]));
         passwd *newUser = nullptr;
         if (parameter.userName != "")
         {
             // Get the user info before chroot, or it will be unable to open /etc/passwd
-            newUser = CheckNull(getpwnam(parameter.userName.c_str()));
+            newUser = CHECKNULL(getpwnam(parameter.userName.c_str()));
         }
 
-        int nullfd = Ensure(open("/dev/null", O_RDWR));
+        int nullfd = ENSURE(open("/dev/null", O_RDWR));
         if (parameter.redirectBeforeChroot)
         {
             RedirectIO(parameter, nullfd);
         }
 
-        Ensure(mount("none", "/", NULL, MS_REC | MS_PRIVATE, NULL)); // Make root private
+        ENSURE(mount("none", "/", NULL, MS_REC | MS_PRIVATE, NULL)); // Make root private
 
         EnsureDirectoryExistance(parameter.chrootDirectory);
-        Ensure(mount(parameter.chrootDirectory.string().c_str(),
+        ENSURE(mount(parameter.chrootDirectory.string().c_str(),
                      parameter.chrootDirectory.string().c_str(), "", MS_BIND | MS_RDONLY | MS_REC, ""));
-        Ensure(mount("", parameter.chrootDirectory.string().c_str(), "", MS_BIND | MS_REMOUNT | MS_RDONLY | MS_REC, ""));
+        ENSURE(mount("", parameter.chrootDirectory.string().c_str(), "", MS_BIND | MS_REMOUNT | MS_RDONLY | MS_REC, ""));
 
         for (MountInfo &info : parameter.mounts)
         {
@@ -167,10 +167,10 @@ static int ChildProcess(void *param_ptr)
 	    
             EnsureDirectoryExistance(info.src);
             EnsureDirectoryExistance(target);
-            Ensure(mount(info.src.string().c_str(), target.string().c_str(), "", MS_BIND | MS_REC, ""));
+            ENSURE(mount(info.src.string().c_str(), target.string().c_str(), "", MS_BIND | MS_REC, ""));
             if (info.limit == 0)
             {
-                Ensure(mount("", target.string().c_str(), "", MS_BIND | MS_REMOUNT | MS_RDONLY | MS_REC, ""));
+                ENSURE(mount("", target.string().c_str(), "", MS_BIND | MS_REMOUNT | MS_RDONLY | MS_REC, ""));
             }
             else if (info.limit != -1)
             {
@@ -178,12 +178,12 @@ static int ChildProcess(void *param_ptr)
             }
         }
 
-        Ensure(chroot(parameter.chrootDirectory.string().c_str()));
-        Ensure(chdir(parameter.workingDirectory.string().c_str()));
+        ENSURE(chroot(parameter.chrootDirectory.string().c_str()));
+        ENSURE(chdir(parameter.workingDirectory.string().c_str()));
 
         if (parameter.mountProc)
         {
-            Ensure(mount("proc", "/proc", "proc", 0, NULL));
+            ENSURE(mount("proc", "/proc", "proc", 0, NULL));
         }
         if (!parameter.redirectBeforeChroot)
         {
@@ -191,22 +191,22 @@ static int ChildProcess(void *param_ptr)
         }
 
         const char *newHostname = "BraveNewWorld";
-        Ensure(sethostname(newHostname, strlen(newHostname)));
+        ENSURE(sethostname(newHostname, strlen(newHostname)));
 
         if (parameter.stackSize != -2)
         {
             rlimit rlim;
             rlim.rlim_max = rlim.rlim_cur = parameter.stackSize != -1 ? parameter.stackSize : RLIM_INFINITY;
-            Ensure(setrlimit(RLIMIT_STACK, &rlim));
+            ENSURE(setrlimit(RLIMIT_STACK, &rlim));
         }
 
         if (newUser != nullptr)
         {
             gid_t groupList[1];
             groupList[0] = newUser->pw_gid;
-            Ensure(syscall(SYS_setgid, newUser->pw_gid));
-            Ensure(syscall(SYS_setgroups, 1, groupList));
-            Ensure(syscall(SYS_setuid, newUser->pw_uid));
+            ENSURE(syscall(SYS_setgid, newUser->pw_gid));
+            ENSURE(syscall(SYS_setgroups, 1, groupList));
+            ENSURE(syscall(SYS_setuid, newUser->pw_uid));
         }
 
         vector<char *> params = StringToPtr(parameter.executableParameters),
@@ -214,14 +214,14 @@ static int ChildProcess(void *param_ptr)
 
         int temp = -1;
         // Inform the parent that no exception occurred.
-        Ensure(write(execParam.pipefd[1], &temp, sizeof(int)));
+        ENSURE(write(execParam.pipefd[1], &temp, sizeof(int)));
 
         // Inform our parent that we are ready to go.
         execParam.semaphore1.Post();
         // Wait for parent's reply.
         execParam.semaphore2.Wait();
 
-        Ensure(execve(parameter.executablePath.c_str(), &params[0], &envi[0]));
+        ENSURE(execve(parameter.executablePath.c_str(), &params[0], &envi[0]));
 
         // If execve returns, then we meet an error.
         raise(SIGABRT);
@@ -238,9 +238,9 @@ static int ChildProcess(void *param_ptr)
         int len = strlen(errMessage);
         try
         {
-            Ensure(write(execParam.pipefd[1], &len, sizeof(int)));
-            Ensure(write(execParam.pipefd[1], errMessage, len));
-            Ensure(close(execParam.pipefd[1]));
+            ENSURE(write(execParam.pipefd[1], &len, sizeof(int)));
+            ENSURE(write(execParam.pipefd[1], errMessage, len));
+            ENSURE(close(execParam.pipefd[1]));
             execParam.semaphore1.Post();
             return 126;
         }
@@ -268,7 +268,7 @@ pid_t StartSandbox(const SandboxParameter &parameter
 
         ExecutionParameter execParam(parameter, O_CLOEXEC | O_NONBLOCK);
 
-        container_pid = Ensure(clone(ChildProcess, &*childStack.end(),
+        container_pid = ENSURE(clone(ChildProcess, &*childStack.end(),
                                      CLONE_NEWNET | CLONE_NEWUTS | CLONE_NEWPID | CLONE_NEWNS | SIGCHLD,
                                      const_cast<void *>(reinterpret_cast<const void *>(&execParam))));
 
@@ -318,7 +318,7 @@ pid_t StartSandbox(const SandboxParameter &parameter
         else if (errLen != -1) // -1 indicates OK.
         {
             vector<char> buf(errLen);
-            Ensure(read(execParam.pipefd[0], &*buf.begin(), errLen));
+            ENSURE(read(execParam.pipefd[0], &*buf.begin(), errLen));
             string errstr(buf.begin(), buf.end());
             throw std::runtime_error((format("The child process has reported the following error: %1%") % errstr).str());
         }
@@ -353,7 +353,7 @@ SBWaitForProcess(pid_t pid)
 {
     ExecutionResult result;
     int status;
-    Ensure(waitpid(pid, &status, 0));
+    ENSURE(waitpid(pid, &status, 0));
     if (WIFEXITED(status))
     {
         result.Status = EXITED;

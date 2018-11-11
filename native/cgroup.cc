@@ -66,7 +66,7 @@ bool InitializeCgroup()
         controllers.push_back(string(subsys_name));
     }
 
-    FILE *proc_mount = CheckNull(fopen("/proc/mounts", "re"));
+    FILE *proc_mount = CHECKNULL(fopen("/proc/mounts", "re"));
     mntent *temp_ent = new mntent, *ent;
     while ((ent = getmntent_r(proc_mount, temp_ent,
                               buf,
@@ -197,7 +197,7 @@ void KillGroupMembers(const CgroupInfo &info)
     auto v = ReadGroupPropertyArray(info, "tasks");
     for (auto &item : v)
     {
-        Ensure(kill((int)(item), SIGKILL));
+        ENSURE(kill((int)(item), SIGKILL));
     }
 }
 

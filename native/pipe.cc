@@ -8,11 +8,11 @@ PosixPipe::PosixPipe(int flags)
 {
     if (flags == 0)
     {
-        Ensure(pipe(fd));
+        ENSURE(pipe(fd));
     }
     else
     {
-        Ensure(pipe2(fd, flags));
+        ENSURE(pipe2(fd, flags));
     }
 }
 
