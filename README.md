@@ -1,14 +1,17 @@
-# simple-sandbox
-A simple linux sandbox with Node.js API.
+# syzoj-sandbox
+A simple linux sandbox with Node.js API. Used by SYZOJ.
 
 ## Prerequisites
 ### Packages
-You need to have the build-essentials (g++, make, etc.) and the boost library (particularly, boost-system and boost-filesystem) installed in your system in order to build the C++ part.
+You need to have the `build-essentials` (`g++`, `make`, etc.) and the `fmt` library installed in your system in order to build the C++ part.
 
-Install them by (in Ubuntu):
+The minimal `g++` version required is `g++-8`. A newer version of `clang++` with C++17 file system support is recommended.
+
+Install them by (in Ubuntu 18.04):
 ```bash
-apt install build-essential libboost-all-dev
+apt install build-essential clang++-9 libfmt-dev
 ```
+
 ### Kernel
 You need to have the memory swap account (disabled by default in Debian 8) enabled with your kernel. You can verify this by checking the existence of `/sys/fs/cgroup/memory/memory.memsw.usage_in_bytes` 
 
@@ -27,10 +30,12 @@ To enjoy the modified kernel.
 
 ## Build
 Pull the repository to somewhere on your computer and run
+
 ```bash
-yarn install # Install required packages and compile C++ code.
+CXX=clang++-9 yarn install # Install required packages and compile C++ code with the clang++-9 compiler
 yarn run build # Compile typescript code.
 ```
+
 To build the project. If you don't want to use `yarn`, just change `yarn` to `npm`.
 
 You can use `yarn run build:watch` to watch for the change of typescript file.
@@ -38,20 +43,24 @@ You can use `yarn run build:watch` to watch for the change of typescript file.
 ## Use
 The library is with a simple API.
 To start the sandbox, use the following code:
+
 ```js
 const sandbox = require('simple-sandbox');
 const myProcess = await sandbox.startSandbox(parameters);
 ```
+
 where `parameters` is an instance of the [SandboxParameters interface](src/interfaces.ts). The detail explanation is available in the comments in that file.
 
 The startSandbox function returns a Promise, from which you can get an instance of the [sandboxProcess](src/sandboxProcess.ts) class, reprensenting your sandboxed Process.
 
 To terminate the sandboxed process, just use the `stop()` function:
+
 ```js
 myProcess.stop();
 ```
 
 To wait for the sandboxed process to end, use the `waitForStop()` function, which returns a `Promise`:
+
 ```js
 myProcess.waitForStop().then((result) => {
     console.log("OK! " + JSON.stringify(result));
