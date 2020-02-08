@@ -165,7 +165,11 @@ static int ChildProcess(void *param_ptr)
 
         for (MountInfo &info : parameter.mounts)
         {
-            fs::path target = parameter.chrootDirectory / info.dst;
+            if (!info.dst.is_absolute()) {
+                throw std::invalid_argument(format("The dst path {} in mounts should be absolute.", info.dst));
+            }
+
+            fs::path target = parameter.chrootDirectory / std::filesystem::relative(info.dst, "/");
 	    
             EnsureDirectoryExistance(info.src);
             EnsureDirectoryExistance(target);
