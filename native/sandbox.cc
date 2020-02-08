@@ -8,8 +8,7 @@
 
 #include <cstring>
 
-#include <boost/filesystem.hpp>
-#include <boost/format.hpp>
+#include <filesystem>
 
 #include <fcntl.h>
 #include <sched.h>
@@ -25,16 +24,19 @@
 #include <sys/wait.h>
 #include <sys/resource.h>
 
+#include <fmt/format.h>
+#include <fmt/ostream.h>
+
 #include "sandbox.h"
 #include "utils.h"
 #include "cgroup.h"
 #include "semaphore.h"
 #include "pipe.h"
 
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 using std::string;
 using std::vector;
-using boost::format;
+using fmt::format;
 
 // Make sure fd 0,1,2 exists.
 static void RedirectIO(const SandboxParameter &param, int nullfd)
@@ -124,11 +126,11 @@ struct ExecutionParameter
 static void EnsureDirectoryExistance(fs::path dir) {
     if (!fs::exists(dir))
     {
-        throw std::runtime_error((format("The specified path %1% does not exist.") % dir).str());
+        throw std::runtime_error((format("The specified path {} does not exist.", dir)));
     }
     if (!fs::is_directory(dir))
     {
-        throw std::runtime_error((format("The specified path %1% exists, but is not a directory.") % dir).str());
+        throw std::runtime_error((format("The specified path {} exists, but is not a directory.", dir)));
     }
 }
 
@@ -320,7 +322,7 @@ pid_t StartSandbox(const SandboxParameter &parameter
             vector<char> buf(errLen);
             ENSURE(read(execParam.pipefd[0], &*buf.begin(), errLen));
             string errstr(buf.begin(), buf.end());
-            throw std::runtime_error((format("The child process has reported the following error: %1%") % errstr).str());
+            throw std::runtime_error((format("The child process has reported the following error: {}", errstr)));
         }
 
         // Clear usage stats.

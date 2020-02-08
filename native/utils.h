@@ -1,12 +1,9 @@
-// Copied from my good old work https://github.com/CDFLS/cwoj_daemon/blob/master/src/daemon/sandboxing/utils.h
-
 #pragma once
 
 #include <string>
 #include <vector>
 #include <stdexcept>
 #include <system_error>
-#include <boost/format.hpp>
 
 std::string SignalToString(int signal);
 

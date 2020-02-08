@@ -5,13 +5,13 @@
 #include <functional>
 #include <exception>
 #include <cstring>
-#include <boost/format.hpp>
-#include <boost/filesystem.hpp>
+#include <filesystem>
+
+#include <fmt/format.h>
 
 #include "sandbox.h"
 #include "cgroup.h"
 
-using boost::format;
 using std::vector;
 using std::string;
 using std::map;
@@ -32,9 +32,11 @@ using Nan::AsyncQueueWorker;
 using Nan::AsyncProgressWorker;
 using Nan::AsyncWorker;
 
+using fmt::format;
+
 #define STR(_value_) Nan::New(_value_).ToLocalChecked()
 #define NUM(_value_) Nan::New<Number>(_value_)
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 class RemoveCgroupWorker : public AsyncWorker
 {
@@ -64,7 +66,7 @@ class RemoveCgroupWorker : public AsyncWorker
         HandleScope scope;
 
         Local<Value> argv[] = {Nan::Null(), Nan::Null()};
-        callback->Call(2, argv);
+        Nan::Call(*callback, 2, argv);
     }
 
     void HandleErrorCallback()
@@ -74,7 +76,7 @@ class RemoveCgroupWorker : public AsyncWorker
         Local<Value> argv[] = {
             Nan::Error(ErrorMessage()),
             Nan::Null()};
-        callback->Call(2, argv);
+        Nan::Call(*callback, 2, argv);
     }
 
   private:
@@ -125,7 +127,7 @@ class WaitForProcessWorker : public AsyncWorker
         Local<Value> argv[] = {
             Nan::Null(),
             resultObject};
-        callback->Call(2, argv);
+        Nan::Call(*callback, 2, argv);
     }
 
     void HandleErrorCallback()
@@ -135,7 +137,7 @@ class WaitForProcessWorker : public AsyncWorker
         Local<Value> argv[] = {
             Nan::Error(ErrorMessage()),
             Nan::Null()};
-        callback->Call(2, argv);
+        Nan::Call(*callback, 2, argv);
     }
 
   private:
@@ -177,7 +179,7 @@ class StartSandboxWorker : public AsyncWorker
         Local<Value> argv[] = {
             Nan::Null(),
             resultObject};
-        callback->Call(2, argv);
+        Nan::Call(*callback, 2, argv);
     }
 
     void HandleErrorCallback()
@@ -187,7 +189,7 @@ class StartSandboxWorker : public AsyncWorker
         Local<Value> argv[] = {
             Nan::Error(ErrorMessage()),
             Nan::Null()};
-        callback->Call(2, argv);
+        Nan::Call(*callback, 2, argv);
     }
 
   private:
@@ -203,7 +205,7 @@ static void StringArrayToVector(Local<Value> val, vector<string> &vec)
         Local<Array> paramArray = Local<Array>::Cast(val);
         for (uint8_t i = 0; i < paramArray->Length(); i++)
         {
-            vec.push_back(string(*Nan::Utf8String(paramArray->Get(i))));
+            vec.push_back(string(*Nan::Utf8String(Nan::Get(paramArray, i).ToLocalChecked())));
         }
     }
     else
@@ -302,8 +304,8 @@ NAN_METHOD(StartChild)
     }
 
 #define PARAM(_src_, _name_) (Get(_src_, STR(#_name_)).ToLocalChecked())
-#define GET_INT(_src_, _param_name_) (PARAM(_src_, _param_name_)->IntegerValue())
-#define GET_BOOL(_src_, _param_name_) (PARAM(_src_, _param_name_)->BooleanValue())
+#define GET_INT(_src_, _param_name_) (PARAM(_src_, _param_name_)->IntegerValue(Nan::GetCurrentContext()).ToChecked())
+#define GET_BOOL(_src_, _param_name_) (PARAM(_src_, _param_name_)->BooleanValue(Nan::GetCurrentContext()).ToChecked())
 #define GET_STRING(_src_, _param_name_) (ValueToString(PARAM(_src_, _param_name_)))
 
     // param.timeLimit = GET_INT(time);
@@ -361,7 +363,7 @@ NAN_METHOD(StartChild)
 
 NAN_METHOD(WaitForProcess)
 {
-    pid_t pid = info[0]->IntegerValue();
+    pid_t pid = info[0]->IntegerValue(Nan::GetCurrentContext()).ToChecked();
     Callback *callback = new Callback(info[1].As<Function>());
     AsyncQueueWorker(new WaitForProcessWorker(callback, pid));
 }
@@ -378,7 +380,7 @@ NAN_MODULE_INIT(Init)
     }
     catch (std::exception &ex)
     {
-        return ThrowError(((format("Unable to initialize libcgroup: %1%") % ex.what())).str().c_str());
+        return ThrowError(((format("Unable to initialize libcgroup: {}", ex.what()))).c_str());
     }
 
     NAN_EXPORT(target, StartChild);

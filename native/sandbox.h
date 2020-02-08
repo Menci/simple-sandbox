@@ -2,8 +2,8 @@
 
 #include <string>
 #include <vector>
+#include <filesystem>
 #include <unistd.h>
-#include <boost/filesystem.hpp>
 
 enum RunStatus {
     EXITED = 0, // App exited normally.
@@ -20,10 +20,10 @@ struct ExecutionResult
 struct MountInfo
 {
     // The source path on your host machine.
-    boost::filesystem::path src;
+    std::filesystem::path src;
     // The destination path in the sandbox.
     // This path must exist, i.e. be `mkdir`ed in the chroot directory.
-    boost::filesystem::path dst;
+    std::filesystem::path dst;
     // The maximum length (in bytes) the sandboxed process may write to the mount.
     // 0 for readonly; -1 for no limit.
     int64_t limit;
@@ -48,9 +48,9 @@ struct SandboxParameter
     bool mountProc;
     // This directory will be chrooted into (`chroot`) before running our binary.
     // Make sure this is not writable by `nobody` user!
-    boost::filesystem::path chrootDirectory;
+    std::filesystem::path chrootDirectory;
     // This directory will be changed into (`chdir`) before running the binary.
-    boost::filesystem::path workingDirectory;
+    std::filesystem::path workingDirectory;
 
     // The directories that will be mounted to the sandbox.
     // See definition of MountInfo for details.
