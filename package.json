@@ -1,6 +1,6 @@
 {
   "name": "syzoj-sandbox",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "description": "A simple sandbox for Node.js using Linux namespaces and cgroup.",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
