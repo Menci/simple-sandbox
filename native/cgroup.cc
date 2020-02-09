@@ -68,9 +68,10 @@ bool InitializeCgroup()
         controllers.push_back(string(subsys_name));
     }
 
-    FILE *proc_mount = CHECKNULL(fopen("/proc/mounts", "re"));
-    mntent *temp_ent = new mntent, *ent;
-    while ((ent = getmntent_r(proc_mount, temp_ent,
+    std::unique_ptr<FILE, decltype(fclose) *> proc_mount(CHECKNULL(fopen("/proc/mounts", "re")), fclose);
+    std::unique_ptr<mntent> temp_ent = std::make_unique<mntent>();
+    mntent *ent;
+    while ((ent = getmntent_r(proc_mount.get(), temp_ent.get(),
                               buf,
                               sizeof(buf))) != NULL)
     {
@@ -86,11 +87,6 @@ bool InitializeCgroup()
             cgroup_mnt[*iter].push_back(fs::path(string(ent->mnt_dir)));
         }
     }
-    delete temp_ent;
-
-    // TODO: implement RAII here. `throw` will cause file descriptor leak for now.
-    if (proc_mount)
-        fclose(proc_mount);
 
     return cgroup_mnt.size() != 0;
 }
