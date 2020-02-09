@@ -310,7 +310,7 @@ pid_t StartSandbox(const SandboxParameter &parameter
         WRITE_WITH_CHECK(memInfo, "memory.memsw.limit_in_bytes", parameter.memoryLimit);
         WRITE_WITH_CHECK(pidInfo, "pids.max", parameter.processLimit);
 
-        // Wait for at most 100ms. If the child process hasn't posted the semaphore,
+        // Wait for at most 500ms. If the child process hasn't posted the semaphore,
         // We will assume that the child has already dead.
         bool waitResult = execParam.semaphore1.TimedWait(500);
 
@@ -318,7 +318,12 @@ pid_t StartSandbox(const SandboxParameter &parameter
         // Child will be killed once the error has been thrown.
         if (!waitResult || bytesRead == 0 || bytesRead == -1)
         {
-            // No information available.
+            if (waitpid(container_pid, nullptr, WNOHANG) == 0)
+            {
+                // The child process is still alive.
+                throw std::runtime_error("The child process is not responding.");
+            }
+            // The child process exited with no information available.
             throw std::runtime_error("The child process has exited unexpectedly.");
         }
         else if (errLen != -1) // -1 indicates OK.
