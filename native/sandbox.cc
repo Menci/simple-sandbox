@@ -3,10 +3,12 @@
 #include <functional>
 #include <system_error>
 #include <vector>
-#include <map>
+#include <unordered_map>
 #include <stdexcept>
+#include <memory>
 
 #include <cstring>
+#include <cassert>
 
 #include <filesystem>
 
@@ -230,16 +232,10 @@ static int ChildProcess(void *param_ptr)
         ENSURE(execve(parameter.executablePath.c_str(), &params[0], &envi[0]));
 
         // If execve returns, then we meet an error.
-        raise(SIGABRT);
-        return 255;
+        return 1;
     }
     catch (std::exception &err)
     {
-        // TODO: implement error handling
-        // abort(); // This will cause segmentation fault.
-        // throw;
-        // return 222;
-
         const char *errMessage = err.what();
         int len = strlen(errMessage);
         try
@@ -248,18 +244,20 @@ static int ChildProcess(void *param_ptr)
             ENSURE(write(execParam.pipefd[1], errMessage, len));
             ENSURE(close(execParam.pipefd[1]));
             execParam.semaphore1.Post();
-            return 126;
+            return 1;
         }
         catch (...)
         {
-            return 125;
+            assert(false);
         }
     }
     catch (...)
     {
-        return 125;
+        assert(false);
     }
 }
+
+static std::unordered_map<pid_t, std::shared_ptr<ExecutionParameter>> runningSandboxes;
 
 // The child stack is only used before `execve`, so it does not need much space.
 const int childStackSize = 1024 * 700;
@@ -272,11 +270,11 @@ pid_t StartSandbox(const SandboxParameter &parameter
         // char* childStack = new char[childStackSize];
         std::vector<char> childStack(childStackSize); // I don't want to call `delete`
 
-        ExecutionParameter execParam(parameter, O_CLOEXEC | O_NONBLOCK);
+        std::shared_ptr<ExecutionParameter> execParam = std::make_shared<ExecutionParameter>(parameter, O_CLOEXEC | O_NONBLOCK);
 
         container_pid = ENSURE(clone(ChildProcess, &*childStack.end(),
                                      CLONE_NEWNET | CLONE_NEWUTS | CLONE_NEWPID | CLONE_NEWNS | SIGCHLD,
-                                     const_cast<void *>(reinterpret_cast<const void *>(&execParam))));
+                                     const_cast<void *>(reinterpret_cast<const void *>(execParam.get()))));
 
         CgroupInfo memInfo("memory", parameter.cgroupName),
             cpuInfo("cpuacct", parameter.cgroupName),
@@ -312,9 +310,9 @@ pid_t StartSandbox(const SandboxParameter &parameter
 
         // Wait for at most 500ms. If the child process hasn't posted the semaphore,
         // We will assume that the child has already dead.
-        bool waitResult = execParam.semaphore1.TimedWait(500);
+        bool waitResult = execParam->semaphore1.TimedWait(500);
 
-        int errLen, bytesRead = read(execParam.pipefd[0], &errLen, sizeof(int));
+        int errLen, bytesRead = read(execParam->pipefd[0], &errLen, sizeof(int));
         // Child will be killed once the error has been thrown.
         if (!waitResult || bytesRead == 0 || bytesRead == -1)
         {
@@ -329,7 +327,7 @@ pid_t StartSandbox(const SandboxParameter &parameter
         else if (errLen != -1) // -1 indicates OK.
         {
             vector<char> buf(errLen);
-            ENSURE(read(execParam.pipefd[0], &*buf.begin(), errLen));
+            ENSURE(read(execParam->pipefd[0], &*buf.begin(), errLen));
             string errstr(buf.begin(), buf.end());
             throw std::runtime_error((format("The child process has reported the following error: {}", errstr)));
         }
@@ -339,7 +337,9 @@ pid_t StartSandbox(const SandboxParameter &parameter
         WriteGroupProperty(cpuInfo, "cpuacct.usage", 0);
 
         // Continue the child.
-        execParam.semaphore2.Post();
+        execParam->semaphore2.Post();
+
+        runningSandboxes[container_pid] = execParam;
 
         return container_pid;
     }
@@ -358,9 +358,28 @@ pid_t StartSandbox(const SandboxParameter &parameter
 ExecutionResult
 SBWaitForProcess(pid_t pid)
 {
+    auto it = runningSandboxes.find(pid);
+    if (it == runningSandboxes.end())
+    {
+        throw std::invalid_argument(format("PID {} is not a currently running sandbox", pid));
+    }
+    std::shared_ptr<ExecutionParameter> execParam = it->second;
+    runningSandboxes.erase(it);
+
     ExecutionResult result;
     int status;
     ENSURE(waitpid(pid, &status, 0));
+
+    // Try reading error message first
+    int errLen, bytesRead = read(execParam->pipefd[0], &errLen, sizeof(int));
+    if (bytesRead > 0)
+    {
+        vector<char> buf(errLen);
+        ENSURE(read(execParam->pipefd[0], &*buf.begin(), errLen));
+        string errstr(buf.begin(), buf.end());
+        throw std::runtime_error((format("The child process has reported the following error: {}", errstr)));
+    }
+
     if (WIFEXITED(status))
     {
         result.Status = EXITED;
