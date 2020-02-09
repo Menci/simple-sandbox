@@ -341,10 +341,6 @@ pid_t StartSandbox(const SandboxParameter &parameter
         // Continue the child.
         execParam.semaphore2.Post();
 
-        // Wait for 1ms to prevent the child stack deallocated before execve.
-        // TODO: Find a better way to handle this.
-        usleep(1000);
-
         return container_pid;
     }
     catch (std::exception &ex)
