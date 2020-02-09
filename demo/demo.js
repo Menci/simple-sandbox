@@ -11,6 +11,7 @@ process.on('SIGINT', terminationHandler);
 const doThings = async () => {
     try {
         const sandboxedProcess = await sss.startSandbox({
+            hostname: "qwq",
             chroot: "/opt/sandbox-test/rootfs",
             mounts: [
                 {

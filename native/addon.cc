@@ -316,6 +316,7 @@ NAN_METHOD(StartChild)
     param.chrootDirectory = fs::path(GET_STRING(jsparam, chroot));
     param.workingDirectory = fs::path(GET_STRING(jsparam, workingDirectory));
     param.executablePath = GET_STRING(jsparam, executable);
+    param.hostname = GET_STRING(jsparam, hostname);
 
 #define SET_REDIRECTION(_name_)                                             \
     if (PARAM(jsparam, _name_)->IsNumber())                                 \

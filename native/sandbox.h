@@ -90,6 +90,9 @@ struct SandboxParameter
 
     // The cgroup name of the sandbox. Must be unique.
     std::string cgroupName;
+
+    // The hostname inside the sandbox, by default equals to the hostname outside.
+    std::string hostname;
 };
 
 pid_t StartSandbox(const SandboxParameter &/*, std::function<void(int)>*/);

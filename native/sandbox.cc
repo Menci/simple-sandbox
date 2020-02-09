@@ -198,8 +198,9 @@ static int ChildProcess(void *param_ptr)
             RedirectIO(parameter, nullfd);
         }
 
-        const char *newHostname = "BraveNewWorld";
-        ENSURE(sethostname(newHostname, strlen(newHostname)));
+        if (!parameter.hostname.empty()) {
+            ENSURE(sethostname(parameter.hostname.c_str(), parameter.hostname.length()));
+        }
 
         if (parameter.stackSize != -2)
         {
