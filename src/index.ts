@@ -5,6 +5,8 @@ import { existsSync } from 'fs';
 import * as randomString from 'randomstring';
 import * as path from 'path';
 
+export * from './interfaces';
+
 if (!existsSync('/sys/fs/cgroup/memory/memory.memsw.usage_in_bytes')) {
     throw new Error("Your linux kernel doesn't support memory-swap account. Please turn it on following the readme.");
 }
@@ -21,3 +23,4 @@ export async function startSandbox(parameter: SandboxParameter): Promise<Sandbox
         });
     });
 };
+
