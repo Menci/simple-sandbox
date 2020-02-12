@@ -1,5 +1,5 @@
 {
-  "name": "syzoj-sandbox",
+  "name": "simple-sandbox",
   "version": "0.3.9",
   "description": "A simple sandbox for Node.js using Linux namespaces and cgroup.",
   "main": "lib/index.js",
@@ -9,7 +9,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/syzoj/syzoj-sandbox"
+    "url": "https://github.com/t123yh/simple-sandbox"
   },
   "keywords": [
     "sandbox",

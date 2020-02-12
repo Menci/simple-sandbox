@@ -1,4 +1,4 @@
-# syzoj-sandbox
+# simple-sandbox
 A simple linux sandbox with Node.js API. Used by SYZOJ.
 
 ## Prerequisites
