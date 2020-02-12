@@ -7,15 +7,16 @@
 #include <iostream>
 #include <stdexcept>
 
-#include <boost/filesystem.hpp>
-#include <boost/filesystem/fstream.hpp>
-#include <boost/format.hpp>
+#include <filesystem>
 
 #include <mntent.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <signal.h>
 #include <string.h>
+
+#include <fmt/format.h>
+#include <fmt/ostream.h>
 
 #include "utils.h"
 #include "cgroup.h"
@@ -25,8 +26,9 @@ using std::vector;
 using std::list;
 using std::map;
 using std::ifstream;
-namespace fs = boost::filesystem;
-using boost::format;
+using std::ofstream;
+namespace fs = std::filesystem;
+using fmt::format;
 
 map<string, vector<fs::path>> cgroup_mnt;
 
@@ -66,9 +68,10 @@ bool InitializeCgroup()
         controllers.push_back(string(subsys_name));
     }
 
-    FILE *proc_mount = CHECKNULL(fopen("/proc/mounts", "re"));
-    mntent *temp_ent = new mntent, *ent;
-    while ((ent = getmntent_r(proc_mount, temp_ent,
+    std::unique_ptr<FILE, decltype(fclose) *> proc_mount(CHECKNULL(fopen("/proc/mounts", "re")), fclose);
+    std::unique_ptr<mntent> temp_ent = std::make_unique<mntent>();
+    mntent *ent;
+    while ((ent = getmntent_r(proc_mount.get(), temp_ent.get(),
                               buf,
                               sizeof(buf))) != NULL)
     {
@@ -84,11 +87,6 @@ bool InitializeCgroup()
             cgroup_mnt[*iter].push_back(fs::path(string(ent->mnt_dir)));
         }
     }
-    delete temp_ent;
-
-    // TODO: implement RAII here. `throw` will cause file descriptor leak for now.
-    if (proc_mount)
-        fclose(proc_mount);
 
     return cgroup_mnt.size() != 0;
 }
@@ -98,7 +96,7 @@ static const fs::path &GetPath(const string &controller)
     auto mnts = cgroup_mnt.find(controller);
     if (mnts == cgroup_mnt.end())
     {
-        throw std::invalid_argument((format("Controller %1% does not exist.") % controller).str());
+        throw std::invalid_argument((format("Controller {} does not exist.", controller)));
     }
     return (mnts->second)[0];
 }
@@ -108,7 +106,7 @@ static fs::path EnsureGroup(const CgroupInfo &info)
     fs::path groupDirectory = GetPath(info.Controller) / info.Group;
     if (!fs::exists(groupDirectory) || !fs::is_directory(groupDirectory))
     {
-        throw std::runtime_error((format("Path %1% is not valid (does not exist or is not a directory).") % groupDirectory).str());
+        throw std::runtime_error((format("Path {} is not valid (does not exist or is not a directory).", groupDirectory)));
     }
     return groupDirectory;
 }
@@ -116,16 +114,16 @@ static fs::path EnsureGroup(const CgroupInfo &info)
 template <typename T>
 static void WriteFile(const fs::path &path, T val, bool overwrite)
 {
-    fs::ofstream ofs;
+    ofstream ofs;
     ofs.exceptions(std::ios::failbit | std::ios::badbit);
-    auto flags = fs::ofstream::out | (overwrite ? fs::ofstream::trunc : fs::ofstream::app);
+    auto flags = ofstream::out | (overwrite ? ofstream::trunc : ofstream::app);
     ofs.open(path, flags);
     ofs << val << std::endl;
 }
 
 static void ReadArray64(const fs::path &path, list<int64_t> &cc)
 {
-    fs::ifstream ifs;
+    ifstream ifs;
     // No fail bit; just ignore when failed.
     ifs.exceptions(std::ios::badbit);
     ifs.open(path);
@@ -139,7 +137,7 @@ static void ReadArray64(const fs::path &path, list<int64_t> &cc)
 
 static int64_t ReadInt64(const fs::path &path)
 {
-    fs::ifstream ifs;
+    ifstream ifs;
     ifs.exceptions(std::ios::failbit | std::ios::badbit);
     ifs.open(path);
     int64_t val;
@@ -156,7 +154,7 @@ void CreateGroup(const CgroupInfo &info)
     }
     else if (!fs::is_directory(groupDirectory))
     {
-        throw std::runtime_error((format("Path %1% has already been used and is not a directory.") % groupDirectory).str());
+        throw std::runtime_error((format("Path {} has already been used and is not a directory.", groupDirectory)));
     }
 }
 
@@ -178,7 +176,7 @@ map<string, int64_t> ReadGroupPropertyMap(const CgroupInfo &info, const string &
 {
     auto groupDir = EnsureGroup(info);
     map<string, int64_t> result;
-    fs::ifstream ifs;
+    ifstream ifs;
     ifs.exceptions(std::ios::badbit);
     ifs.open(groupDir / property);
     while (ifs)

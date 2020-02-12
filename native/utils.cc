@@ -2,16 +2,17 @@
 
 #include <string>
 #include <vector>
-#include <boost/format.hpp>
 #include <system_error>
+
+#include <fmt/format.h>
+
 #include "utils.h"
 
 using std::string;
 using std::vector;
-using boost::format;
 using std::system_error;
-using boost::str;
 using std::system_category;
+using fmt::format;
 
 void Ensure_Seccomp(int XX)
 {
@@ -23,7 +24,7 @@ void Ensure_Seccomp(int XX)
 
 int __Ensure(int XX, const char *file, int line, const char *operation)
 {
-    return EnsureNot(XX, -1, (format("`%3%`@%1%,%2%") % file % line % operation).str());
+    return EnsureNot(XX, -1, (format("`{}`@{},{}", operation, file, line)));
 }
 
 void Ensure0(int XX)

@@ -11,6 +11,7 @@ process.on('SIGINT', terminationHandler);
 const doThings = async () => {
     try {
         const sandboxedProcess = await sss.startSandbox({
+            hostname: "qwq",
             chroot: "/opt/sandbox-test/rootfs",
             mounts: [
                 {
@@ -19,16 +20,16 @@ const doThings = async () => {
                     limit: 0
                 }, {
                     src: "/opt/sandbox-test/working",
-                    dst: "/sandbox/working", 
+                    dst: "/sandbox/working",
                     limit: 10240 * 1024
                 }],
-            executable: "/usr/bin/yes",
-            parameters: ["/usr/bin/yes"],
+            executable: "/bin/bash",
+            parameters: ["/bin/bash"],
             environments: ["PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"],
-            stdin: "/dev/null",
+            stdin: "/dev/stdin",
             stdout: "/dev/stdout",
             stderr: "/dev/stdout",
-            time: 1000,
+            time: 60 * 1000, // 1 minute, for a bash playground
             mountProc: true,
             redirectBeforeChroot: true,
             memory: 10240 * 1024, // 10MB
@@ -38,11 +39,13 @@ const doThings = async () => {
             workingDirectory: "/sandbox/working"
         });
 
-        console.log("Sandbox started, press enter to stop");
-        var stdin = process.openStdin();
-        stdin.addListener("data", function (d) {
-            sandboxedProcess.stop();
-        });
+        // Uncomment these and change 'stdin: "/dev/stdin"' to "/dev/null" to cancel the sandbox with enter
+        //
+        // console.log("Sandbox started, press enter to stop");
+        // var stdin = process.openStdin();
+        // stdin.addListener("data", function (d) {
+        //     sandboxedProcess.stop();
+        // });
 
         const result = await sandboxedProcess.waitForStop();
         console.log("Your sandbox finished!" + JSON.stringify(result));

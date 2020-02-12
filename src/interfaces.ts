@@ -28,7 +28,10 @@ export interface SandboxParameter {
     // so you can have any number of sandboxes using the same chroot synchronously.
     chroot: string;
 
-    mounts:MountInfo[];
+    // The hostname inside the sandbox, by default equals to the hostname outside.
+    hostname: string;
+
+    mounts: MountInfo[];
 
     // Whether to redirect the stdio before chroot (and setuid).
     // True indicates that stdio should be redirected before chrooting.

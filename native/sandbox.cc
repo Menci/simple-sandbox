@@ -3,13 +3,15 @@
 #include <functional>
 #include <system_error>
 #include <vector>
-#include <map>
+#include <unordered_map>
 #include <stdexcept>
+#include <memory>
+#include <mutex>
 
 #include <cstring>
+#include <cassert>
 
-#include <boost/filesystem.hpp>
-#include <boost/format.hpp>
+#include <filesystem>
 
 #include <fcntl.h>
 #include <sched.h>
@@ -25,16 +27,19 @@
 #include <sys/wait.h>
 #include <sys/resource.h>
 
+#include <fmt/format.h>
+#include <fmt/ostream.h>
+
 #include "sandbox.h"
 #include "utils.h"
 #include "cgroup.h"
 #include "semaphore.h"
 #include "pipe.h"
 
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 using std::string;
 using std::vector;
-using boost::format;
+using fmt::format;
 
 // Make sure fd 0,1,2 exists.
 static void RedirectIO(const SandboxParameter &param, int nullfd)
@@ -124,11 +129,11 @@ struct ExecutionParameter
 static void EnsureDirectoryExistance(fs::path dir) {
     if (!fs::exists(dir))
     {
-        throw std::runtime_error((format("The specified path %1% does not exist.") % dir).str());
+        throw std::runtime_error((format("The specified path {} does not exist.", dir)));
     }
     if (!fs::is_directory(dir))
     {
-        throw std::runtime_error((format("The specified path %1% exists, but is not a directory.") % dir).str());
+        throw std::runtime_error((format("The specified path {} exists, but is not a directory.", dir)));
     }
 }
 
@@ -141,11 +146,26 @@ static int ChildProcess(void *param_ptr)
     try
     {
         ENSURE(close(execParam.pipefd[0]));
-        passwd *newUser = nullptr;
+
+        passwd newUserBuffer, *newUser = nullptr;
+        std::vector<char> newUserDataBuffer;
         if (parameter.userName != "")
         {
             // Get the user info before chroot, or it will be unable to open /etc/passwd
-            newUser = CHECKNULL(getpwnam(parameter.userName.c_str()));
+            long passwdBufferSize = sysconf(_SC_GETPW_R_SIZE_MAX);
+            if (passwdBufferSize == -1) passwdBufferSize = 16384;
+            newUserDataBuffer.resize(passwdBufferSize);
+            const int ret = getpwnam_r(parameter.userName.c_str(), &newUserBuffer, newUserDataBuffer.data(), passwdBufferSize, &newUser);
+            if (newUser == nullptr)
+            {
+                if (ret != 0)
+                {
+                    errno = ret;
+                    throw std::system_error(errno, std::system_category());
+                }
+                else
+                    throw std::invalid_argument(format("No such user: {}", parameter.userName));
+            }
         }
 
         int nullfd = ENSURE(open("/dev/null", O_RDWR));
@@ -163,7 +183,11 @@ static int ChildProcess(void *param_ptr)
 
         for (MountInfo &info : parameter.mounts)
         {
-            fs::path target = parameter.chrootDirectory / info.dst;
+            if (!info.dst.is_absolute()) {
+                throw std::invalid_argument(format("The dst path {} in mounts should be absolute.", info.dst));
+            }
+
+            fs::path target = parameter.chrootDirectory / std::filesystem::relative(info.dst, "/");
 	    
             EnsureDirectoryExistance(info.src);
             EnsureDirectoryExistance(target);
@@ -190,8 +214,9 @@ static int ChildProcess(void *param_ptr)
             RedirectIO(parameter, nullfd);
         }
 
-        const char *newHostname = "BraveNewWorld";
-        ENSURE(sethostname(newHostname, strlen(newHostname)));
+        if (!parameter.hostname.empty()) {
+            ENSURE(sethostname(parameter.hostname.c_str(), parameter.hostname.length()));
+        }
 
         if (parameter.stackSize != -2)
         {
@@ -224,16 +249,10 @@ static int ChildProcess(void *param_ptr)
         ENSURE(execve(parameter.executablePath.c_str(), &params[0], &envi[0]));
 
         // If execve returns, then we meet an error.
-        raise(SIGABRT);
-        return 255;
+        return 1;
     }
     catch (std::exception &err)
     {
-        // TODO: implement error handling
-        // abort(); // This will cause segmentation fault.
-        // throw;
-        // return 222;
-
         const char *errMessage = err.what();
         int len = strlen(errMessage);
         try
@@ -242,18 +261,21 @@ static int ChildProcess(void *param_ptr)
             ENSURE(write(execParam.pipefd[1], errMessage, len));
             ENSURE(close(execParam.pipefd[1]));
             execParam.semaphore1.Post();
-            return 126;
+            return 1;
         }
         catch (...)
         {
-            return 125;
+            assert(false);
         }
     }
     catch (...)
     {
-        return 125;
+        assert(false);
     }
 }
+
+static std::unordered_map<pid_t, std::shared_ptr<ExecutionParameter>> runningSandboxes;
+static std::mutex runningSandboxesMutex;
 
 // The child stack is only used before `execve`, so it does not need much space.
 const int childStackSize = 1024 * 700;
@@ -266,11 +288,11 @@ pid_t StartSandbox(const SandboxParameter &parameter
         // char* childStack = new char[childStackSize];
         std::vector<char> childStack(childStackSize); // I don't want to call `delete`
 
-        ExecutionParameter execParam(parameter, O_CLOEXEC | O_NONBLOCK);
+        std::shared_ptr<ExecutionParameter> execParam = std::make_shared<ExecutionParameter>(parameter, O_CLOEXEC | O_NONBLOCK);
 
         container_pid = ENSURE(clone(ChildProcess, &*childStack.end(),
                                      CLONE_NEWNET | CLONE_NEWUTS | CLONE_NEWPID | CLONE_NEWNS | SIGCHLD,
-                                     const_cast<void *>(reinterpret_cast<const void *>(&execParam))));
+                                     const_cast<void *>(reinterpret_cast<const void *>(execParam.get()))));
 
         CgroupInfo memInfo("memory", parameter.cgroupName),
             cpuInfo("cpuacct", parameter.cgroupName),
@@ -304,23 +326,28 @@ pid_t StartSandbox(const SandboxParameter &parameter
         WRITE_WITH_CHECK(memInfo, "memory.memsw.limit_in_bytes", parameter.memoryLimit);
         WRITE_WITH_CHECK(pidInfo, "pids.max", parameter.processLimit);
 
-        // Wait for at most 100ms. If the child process hasn't posted the semaphore,
+        // Wait for at most 500ms. If the child process hasn't posted the semaphore,
         // We will assume that the child has already dead.
-        bool waitResult = execParam.semaphore1.TimedWait(500);
+        bool waitResult = execParam->semaphore1.TimedWait(500);
 
-        int errLen, bytesRead = read(execParam.pipefd[0], &errLen, sizeof(int));
+        int errLen, bytesRead = read(execParam->pipefd[0], &errLen, sizeof(int));
         // Child will be killed once the error has been thrown.
         if (!waitResult || bytesRead == 0 || bytesRead == -1)
         {
-            // No information available.
+            if (waitpid(container_pid, nullptr, WNOHANG) == 0)
+            {
+                // The child process is still alive.
+                throw std::runtime_error("The child process is not responding.");
+            }
+            // The child process exited with no information available.
             throw std::runtime_error("The child process has exited unexpectedly.");
         }
         else if (errLen != -1) // -1 indicates OK.
         {
             vector<char> buf(errLen);
-            ENSURE(read(execParam.pipefd[0], &*buf.begin(), errLen));
+            ENSURE(read(execParam->pipefd[0], &*buf.begin(), errLen));
             string errstr(buf.begin(), buf.end());
-            throw std::runtime_error((format("The child process has reported the following error: %1%") % errstr).str());
+            throw std::runtime_error((format("The child process has reported the following error: {}", errstr)));
         }
 
         // Clear usage stats.
@@ -328,11 +355,12 @@ pid_t StartSandbox(const SandboxParameter &parameter
         WriteGroupProperty(cpuInfo, "cpuacct.usage", 0);
 
         // Continue the child.
-        execParam.semaphore2.Post();
+        execParam->semaphore2.Post();
 
-        // Wait for 1ms to prevent the child stack deallocated before execve.
-        // TODO: Find a better way to handle this.
-        usleep(1000);
+        {
+            std::lock_guard<std::mutex> guard(runningSandboxesMutex);
+            runningSandboxes[container_pid] = execParam;
+        }
 
         return container_pid;
     }
@@ -351,9 +379,33 @@ pid_t StartSandbox(const SandboxParameter &parameter
 ExecutionResult
 SBWaitForProcess(pid_t pid)
 {
+    decltype(runningSandboxes.find(pid)) it;
+    std::shared_ptr<ExecutionParameter> execParam;
+    {
+        std::lock_guard<std::mutex> guard(runningSandboxesMutex);
+        it = runningSandboxes.find(pid);
+        if (it == runningSandboxes.end())
+        {
+            throw std::invalid_argument(format("PID {} is not a currently running sandbox", pid));
+        }
+        execParam = it->second;
+        runningSandboxes.erase(it);
+    }
+
     ExecutionResult result;
     int status;
     ENSURE(waitpid(pid, &status, 0));
+
+    // Try reading error message first
+    int errLen, bytesRead = read(execParam->pipefd[0], &errLen, sizeof(int));
+    if (bytesRead > 0)
+    {
+        vector<char> buf(errLen);
+        ENSURE(read(execParam->pipefd[0], &*buf.begin(), errLen));
+        string errstr(buf.begin(), buf.end());
+        throw std::runtime_error((format("The child process has reported the following error: {}", errstr)));
+    }
+
     if (WIFEXITED(status))
     {
         result.Status = EXITED;
