@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <stdexcept>
 #include <memory>
+#include <mutex>
 
 #include <cstring>
 #include <cassert>
@@ -145,11 +146,26 @@ static int ChildProcess(void *param_ptr)
     try
     {
         ENSURE(close(execParam.pipefd[0]));
-        passwd *newUser = nullptr;
+
+        passwd newUserBuffer, *newUser = nullptr;
+        std::vector<char> newUserDataBuffer;
         if (parameter.userName != "")
         {
             // Get the user info before chroot, or it will be unable to open /etc/passwd
-            newUser = CHECKNULL(getpwnam(parameter.userName.c_str()));
+            long passwdBufferSize = sysconf(_SC_GETPW_R_SIZE_MAX);
+            if (passwdBufferSize == -1) passwdBufferSize = 16384;
+            newUserDataBuffer.resize(passwdBufferSize);
+            const int ret = getpwnam_r(parameter.userName.c_str(), &newUserBuffer, newUserDataBuffer.data(), passwdBufferSize, &newUser);
+            if (newUser == nullptr)
+            {
+                if (ret != 0)
+                {
+                    errno = ret;
+                    throw std::system_error(errno, std::system_category());
+                }
+                else
+                    throw std::invalid_argument(format("No such user: {}", parameter.userName));
+            }
         }
 
         int nullfd = ENSURE(open("/dev/null", O_RDWR));
@@ -259,6 +275,7 @@ static int ChildProcess(void *param_ptr)
 }
 
 static std::unordered_map<pid_t, std::shared_ptr<ExecutionParameter>> runningSandboxes;
+static std::mutex runningSandboxesMutex;
 
 // The child stack is only used before `execve`, so it does not need much space.
 const int childStackSize = 1024 * 700;
@@ -340,7 +357,10 @@ pid_t StartSandbox(const SandboxParameter &parameter
         // Continue the child.
         execParam->semaphore2.Post();
 
-        runningSandboxes[container_pid] = execParam;
+        {
+            std::lock_guard<std::mutex> guard(runningSandboxesMutex);
+            runningSandboxes[container_pid] = execParam;
+        }
 
         return container_pid;
     }
@@ -359,13 +379,18 @@ pid_t StartSandbox(const SandboxParameter &parameter
 ExecutionResult
 SBWaitForProcess(pid_t pid)
 {
-    auto it = runningSandboxes.find(pid);
-    if (it == runningSandboxes.end())
+    decltype(runningSandboxes.find(pid)) it;
+    std::shared_ptr<ExecutionParameter> execParam;
     {
-        throw std::invalid_argument(format("PID {} is not a currently running sandbox", pid));
+        std::lock_guard<std::mutex> guard(runningSandboxesMutex);
+        it = runningSandboxes.find(pid);
+        if (it == runningSandboxes.end())
+        {
+            throw std::invalid_argument(format("PID {} is not a currently running sandbox", pid));
+        }
+        execParam = it->second;
+        runningSandboxes.erase(it);
     }
-    std::shared_ptr<ExecutionParameter> execParam = it->second;
-    runningSandboxes.erase(it);
 
     ExecutionResult result;
     int status;
