@@ -170,35 +170,57 @@ Napi::Value NodeStartSandbox(const Napi::CallbackInfo &info)
     return Napi::Value();
 }
 
-Napi::Value NodeWaitForProcess(const Napi::CallbackInfo &info)
+class WaitForProcessWorker : public Napi::AsyncWorker
+{
+private:
+    pid_t pid;
+    void *executionParameter;
+    ExecutionResult result;
+
+public:
+    WaitForProcessWorker(Napi::Function &callback, pid_t pid, void *executionParameter)
+        : Napi::AsyncWorker(callback), pid(pid), executionParameter(executionParameter) {}
+
+    void Execute()
+    {
+        try
+        {
+            result = WaitForProcess(pid, executionParameter);
+        }
+        catch (std::exception &ex)
+        {
+            SetError(ex.what());
+        }
+        catch (...)
+        {
+            SetError("Something unexpected occurred while waiting for process termiation");
+        }
+    }
+
+    void OnOK()
+    {
+        Napi::Env env = Env();
+
+        Napi::Object obj = Napi::Object::New(env);
+
+        obj.Set("status", result.status == EXITED ? "exited" : "signaled");
+        obj.Set("code", result.code);
+
+        Callback().Call({env.Undefined(), obj});
+    }
+};
+
+
+void NodeWaitForProcess(const Napi::CallbackInfo &info)
 {
     Napi::Env env = info.Env();
 
     pid_t pid = info[0].ToNumber().Int32Value();
     void *executionParameter = *reinterpret_cast<void **>(info[1].As<Napi::ArrayBuffer>().Data());
+    Napi::Function callback = info[2].As<Napi::Function>();
 
-    ExecutionResult result;
-    try
-    {
-        result = WaitForProcess(pid, executionParameter);
-    }
-    catch (std::exception &ex)
-    {
-        Napi::Error::New(env, ex.what()).ThrowAsJavaScriptException();
-        return Napi::Value();
-    }
-    catch (...)
-    {
-        Napi::Error::New(env, "Something unexpected occurred while waiting for process termiation").ThrowAsJavaScriptException();
-        return Napi::Value();
-    }
-
-    Napi::Object obj = Napi::Object::New(env);
-
-    obj.Set("status", result.status == EXITED ? "exited" : "signaled");
-    obj.Set("code", result.code);
-
-    return obj;
+    WaitForProcessWorker *waitForProcessWorker = new WaitForProcessWorker(callback, pid, executionParameter);
+    waitForProcessWorker->Queue();
 }
 
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
