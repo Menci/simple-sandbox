@@ -30,7 +30,7 @@ using std::ofstream;
 namespace fs = std::filesystem;
 using fmt::format;
 
-map<string, vector<fs::path>> cgroup_mnt;
+const map<string, vector<fs::path>> cgroup_mnt = InitializeCgroup();
 
 static bool IsEmpty(const string &str)
 {
@@ -51,9 +51,10 @@ CgroupInfo::CgroupInfo(const string &controller, const string &group)
 }
 
 // This piece of code is copied from libcgroup but translated to C++. C++ is very great.
-bool InitializeCgroup()
+map<string, vector<fs::path>> InitializeCgroup()
 {
-    cgroup_mnt.clear();
+    map<string, vector<fs::path>> cgroup_mnt;
+
     char buf[4 * FILENAME_MAX];
 
     ifstream proc_cgroup("/proc/cgroups");
@@ -88,7 +89,7 @@ bool InitializeCgroup()
         }
     }
 
-    return cgroup_mnt.size() != 0;
+    return cgroup_mnt;
 }
 
 static const fs::path &GetPath(const string &controller)

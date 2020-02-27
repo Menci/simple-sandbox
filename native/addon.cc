@@ -19,11 +19,6 @@ std::string GetStringWithEmptyCheck(Napi::Value value) {
     return value.IsString() ? value.ToString().Utf8Value() : "";
 }
 
-void NodeInit(const Napi::CallbackInfo &info)
-{
-    InitializeCgroup();
-}
-
 Napi::Value NodeGetCgroupProperty2(const Napi::CallbackInfo &info)
 {
     Napi::Env env = info.Env();
@@ -207,7 +202,6 @@ Napi::Value NodeWaitForProcess(const Napi::CallbackInfo &info)
 }
 
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
-    exports.Set("init", Napi::Function::New(env, NodeInit));
     exports.Set("getCgroupProperty", Napi::Function::New(env, NodeGetCgroupProperty));
     exports.Set("getCgroupProperty2", Napi::Function::New(env, NodeGetCgroupProperty2));
     exports.Set("removeCgroup", Napi::Function::New(env, NodeRemoveCgroup));

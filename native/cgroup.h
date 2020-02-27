@@ -15,7 +15,7 @@ struct CgroupInfo
 };
 
 // Look for controllers and their mount paths.
-bool InitializeCgroup();
+std::map<std::string, std::vector<std::filesystem::path>> InitializeCgroup();
 
 void CreateGroup(const CgroupInfo &info);
 
