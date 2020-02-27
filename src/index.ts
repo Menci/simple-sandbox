@@ -11,6 +11,8 @@ if (!existsSync('/sys/fs/cgroup/memory/memory.memsw.usage_in_bytes')) {
     throw new Error("Your linux kernel doesn't support memory-swap account. Please turn it on following the readme.");
 }
 
+nativeAddon.init();
+
 export function startSandbox(parameter: SandboxParameter): SandboxProcess {
     const actualParameter = Object.assign({}, parameter);
     actualParameter.cgroup = path.join(actualParameter.cgroup, randomString.generate(9));
