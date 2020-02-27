@@ -15,14 +15,18 @@
 using std::string;
 namespace fs = std::filesystem;
 
+std::string GetStringWithEmptyCheck(Napi::Value value) {
+    return value.IsString() ? value.ToString().Utf8Value() : "";
+}
+
 Napi::Value NodeGetCgroupProperty2(const Napi::CallbackInfo &info)
 {
     Napi::Env env = info.Env();
 
-    string controllerName = info[0].ToString().Utf8Value();
-    string cgroupName = info[1].ToString().Utf8Value();
-    string propertyName = info[2].ToString().Utf8Value();
-    string subPropertyName = info[3].ToString().Utf8Value();
+    string controllerName = GetStringWithEmptyCheck(info[0]);
+    string cgroupName = GetStringWithEmptyCheck(info[1]);
+    string propertyName = GetStringWithEmptyCheck(info[2]);
+    string subPropertyName = GetStringWithEmptyCheck(info[3]);
     try
     {
         CgroupInfo cginfo(controllerName, cgroupName);
@@ -44,9 +48,9 @@ Napi::Value NodeGetCgroupProperty(const Napi::CallbackInfo &info)
 {
     Napi::Env env = info.Env();
 
-    string controllerName = info[0].ToString().Utf8Value();
-    string cgroupName = info[1].ToString().Utf8Value();
-    string propertyName = info[2].ToString().Utf8Value();
+    string controllerName = GetStringWithEmptyCheck(info[0]);
+    string cgroupName = GetStringWithEmptyCheck(info[1]);
+    string propertyName = GetStringWithEmptyCheck(info[2]);
     try
     {
         CgroupInfo cginfo(controllerName, cgroupName);
@@ -68,8 +72,8 @@ void NodeRemoveCgroup(const Napi::CallbackInfo &info)
 {
     Napi::Env env = info.Env();
 
-    string controllerName = info[0].ToString().Utf8Value();
-    string cgroupName = info[1].ToString().Utf8Value();
+    string controllerName = GetStringWithEmptyCheck(info[0]);
+    string cgroupName = GetStringWithEmptyCheck(info[1]);
     try
     {
         CgroupInfo cginfo(controllerName, cgroupName);
@@ -87,7 +91,7 @@ void NodeRemoveCgroup(const Napi::CallbackInfo &info)
 
 std::vector<string> StringArrayToVector(const Napi::Array &array) {
     std::vector<string> result(array.Length());
-    for (size_t i = 0; i < array.Length(); i++) result[i] = array[i].ToString().Utf8Value();
+    for (size_t i = 0; i < array.Length(); i++) result[i] = GetStringWithEmptyCheck(array[i]);
     return result;
 }
 
@@ -103,28 +107,28 @@ Napi::Value NodeStartSandbox(const Napi::CallbackInfo &info)
     param.processLimit = jsparam.Get("process").ToNumber().Int32Value();
     param.redirectBeforeChroot = jsparam.Get("redirectBeforeChroot").ToBoolean().Value();
     param.mountProc = jsparam.Get("mountProc").ToBoolean().Value();
-    param.chrootDirectory = fs::path(jsparam.Get("chroot").ToString().Utf8Value());
-    param.workingDirectory = fs::path(jsparam.Get("workingDirectory").ToString().Utf8Value());
-    param.executablePath = jsparam.Get("executable").ToString().Utf8Value();
-    param.hostname = jsparam.Get("hostname").ToString().Utf8Value();
+    param.chrootDirectory = fs::path(GetStringWithEmptyCheck(jsparam.Get("chroot")));
+    param.workingDirectory = fs::path(GetStringWithEmptyCheck(jsparam.Get("workingDirectory")));
+    param.executablePath = GetStringWithEmptyCheck(jsparam.Get("executable"));
+    param.hostname = GetStringWithEmptyCheck(jsparam.Get("hostname"));
 
 #define SET_REDIRECTION(_name_)                                                                  \
-    if (jsparam.Get(#_name_).IsNumber())                                                      \
+    if (jsparam.Get(#_name_).IsNumber())                                                         \
     {                                                                                            \
-        param._name_##RedirectionFileDescriptor = jsparam.Get(#_name_).ToNumber().Int32Value(); \
+        param._name_##RedirectionFileDescriptor = jsparam.Get(#_name_).ToNumber().Int32Value();  \
     }                                                                                            \
     else                                                                                         \
     {                                                                                            \
         param._name_##RedirectionFileDescriptor = -1;                                            \
-        param._name_##Redirection = jsparam.Get(#_name_).ToString().Utf8Value();                \
+        param._name_##Redirection = GetStringWithEmptyCheck(jsparam.Get(#_name_));               \
     }
 
     SET_REDIRECTION(stdin);
     SET_REDIRECTION(stdout);
     SET_REDIRECTION(stderr);
 
-    param.userName = jsparam.Get("user").ToString().Utf8Value();
-    param.cgroupName = jsparam.Get("cgroup").ToString().Utf8Value();
+    param.userName = GetStringWithEmptyCheck(jsparam.Get("user"));
+    param.cgroupName = GetStringWithEmptyCheck(jsparam.Get("cgroup"));
 
     param.stackSize = jsparam.Get("stackSize").ToNumber().Int32Value();
     if (param.stackSize <= 0) {
@@ -138,8 +142,8 @@ Napi::Value NodeStartSandbox(const Napi::CallbackInfo &info)
     {
         Napi::Object mntObj = static_cast<Napi::Value>(mounts[i]).As<Napi::Object>();
         MountInfo mnt;
-        mnt.src = fs::path(mntObj.Get("src").ToString().Utf8Value());
-        mnt.dst = fs::path(mntObj.Get("dst").ToString().Utf8Value());
+        mnt.src = fs::path(GetStringWithEmptyCheck(mntObj.Get("src")));
+        mnt.dst = fs::path(GetStringWithEmptyCheck(mntObj.Get("dst")));
         mnt.limit = mntObj.Get("limit").ToNumber().Int32Value();
         param.mounts.push_back(mnt);
     }
