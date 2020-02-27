@@ -3,7 +3,6 @@
 #include <functional>
 #include <system_error>
 #include <vector>
-#include <unordered_map>
 #include <stdexcept>
 #include <memory>
 #include <mutex>
@@ -274,21 +273,18 @@ static int ChildProcess(void *param_ptr)
     }
 }
 
-static std::unordered_map<pid_t, std::shared_ptr<ExecutionParameter>> runningSandboxes;
-static std::mutex runningSandboxesMutex;
-
 // The child stack is only used before `execve`, so it does not need much space.
 const int childStackSize = 1024 * 700;
-pid_t StartSandbox(const SandboxParameter &parameter
-                   /* ,std::function<void(pid_t)> reportPid*/) // Let's use some fancy C++11 feature.
+void *StartSandbox(const SandboxParameter &parameter,
+                   pid_t &container_pid)
 {
-    pid_t container_pid = -1;
+    container_pid = -1;
     try
     {
         // char* childStack = new char[childStackSize];
         std::vector<char> childStack(childStackSize); // I don't want to call `delete`
 
-        std::shared_ptr<ExecutionParameter> execParam = std::make_shared<ExecutionParameter>(parameter, O_CLOEXEC | O_NONBLOCK);
+        std::unique_ptr<ExecutionParameter> execParam = std::make_unique<ExecutionParameter>(parameter, O_CLOEXEC | O_NONBLOCK);
 
         container_pid = ENSURE(clone(ChildProcess, &*childStack.end(),
                                      CLONE_NEWNET | CLONE_NEWUTS | CLONE_NEWPID | CLONE_NEWNS | SIGCHLD,
@@ -357,12 +353,7 @@ pid_t StartSandbox(const SandboxParameter &parameter
         // Continue the child.
         execParam->semaphore2.Post();
 
-        {
-            std::lock_guard<std::mutex> guard(runningSandboxesMutex);
-            runningSandboxes[container_pid] = execParam;
-        }
-
-        return container_pid;
+        return execParam.release();
     }
     catch (std::exception &ex)
     {
@@ -372,25 +363,14 @@ pid_t StartSandbox(const SandboxParameter &parameter
             (void)kill(container_pid, SIGKILL);
             (void)waitpid(container_pid, NULL, WNOHANG);
         }
-        throw;
+        std::rethrow_exception(std::current_exception());
     }
 }
 
 ExecutionResult
-SBWaitForProcess(pid_t pid)
+WaitForProcess(pid_t pid, void *executionParameter)
 {
-    decltype(runningSandboxes.find(pid)) it;
-    std::shared_ptr<ExecutionParameter> execParam;
-    {
-        std::lock_guard<std::mutex> guard(runningSandboxesMutex);
-        it = runningSandboxes.find(pid);
-        if (it == runningSandboxes.end())
-        {
-            throw std::invalid_argument(format("PID {} is not a currently running sandbox", pid));
-        }
-        execParam = it->second;
-        runningSandboxes.erase(it);
-    }
+    std::unique_ptr<ExecutionParameter> execParam(reinterpret_cast<ExecutionParameter *>(executionParameter));
 
     ExecutionResult result;
     int status;
@@ -408,13 +388,13 @@ SBWaitForProcess(pid_t pid)
 
     if (WIFEXITED(status))
     {
-        result.Status = EXITED;
-        result.Code = WEXITSTATUS(status);
+        result.status = EXITED;
+        result.code = WEXITSTATUS(status);
     }
     else if (WIFSIGNALED(status))
     {
-        result.Status = SIGNALED;
-        result.Code = WTERMSIG(status);
+        result.status = SIGNALED;
+        result.code = WTERMSIG(status);
     }
     return result;
 }

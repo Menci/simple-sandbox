@@ -12,9 +12,9 @@ enum RunStatus {
 
 struct ExecutionResult
 {
-    int Status;
+    int status;
     // If exited, this is the exit code; if signaled, this is the signal number.
-    int Code;
+    int code;
 };
 
 struct MountInfo
@@ -95,6 +95,6 @@ struct SandboxParameter
     std::string hostname;
 };
 
-pid_t StartSandbox(const SandboxParameter &/*, std::function<void(int)>*/);
- 
-ExecutionResult SBWaitForProcess(pid_t pid);
+void *StartSandbox(const SandboxParameter &, pid_t &);
+
+ExecutionResult WaitForProcess(pid_t pid, void *executionParameter);

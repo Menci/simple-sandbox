@@ -1,4 +1,3 @@
-#include <nan.h>
 #include <map>
 #include <vector>
 #include <string>
@@ -7,388 +6,205 @@
 #include <cstring>
 #include <filesystem>
 
+#include <napi.h>
 #include <fmt/format.h>
 
 #include "sandbox.h"
 #include "cgroup.h"
 
-using std::vector;
 using std::string;
-using std::map;
-
-using v8::Local;
-using v8::Array;
-using v8::Number;
-using v8::Object;
-using v8::Value;
-using v8::Function;
-using Nan::ThrowError;
-using Nan::ThrowTypeError;
-using Nan::Callback;
-using Nan::HandleScope;
-using Nan::Get;
-using Nan::Set;
-using Nan::AsyncQueueWorker;
-using Nan::AsyncProgressWorker;
-using Nan::AsyncWorker;
-
-using fmt::format;
-
-#define STR(_value_) Nan::New(_value_).ToLocalChecked()
-#define NUM(_value_) Nan::New<Number>(_value_)
 namespace fs = std::filesystem;
 
-class RemoveCgroupWorker : public AsyncWorker
+Napi::Value NodeGetCgroupProperty2(const Napi::CallbackInfo &info)
 {
-  public:
-    RemoveCgroupWorker(Callback *callback, CgroupInfo &info) : AsyncWorker(callback), m_info(info)
-    {
-    }
+    Napi::Env env = info.Env();
 
-    void Execute()
-    {
-        try
-        {
-            RemoveCgroup(m_info);
-        }
-        catch (std::exception &ex)
-        {
-            SetErrorMessage(ex.what());
-        }
-        catch (...)
-        {
-            SetErrorMessage("Something unexpected occurred while killing cgroup");
-        }
-    }
-
-    void HandleOKCallback()
-    {
-        HandleScope scope;
-
-        Local<Value> argv[] = {Nan::Null(), Nan::Null()};
-        Nan::Call(*callback, 2, argv);
-    }
-
-    void HandleErrorCallback()
-    {
-        HandleScope scope;
-
-        Local<Value> argv[] = {
-            Nan::Error(ErrorMessage()),
-            Nan::Null()};
-        Nan::Call(*callback, 2, argv);
-    }
-
-  private:
-    CgroupInfo m_info;
-};
-
-class WaitForProcessWorker : public AsyncWorker
-{
-  public:
-    WaitForProcessWorker(Callback *callback, pid_t pid) : AsyncWorker(callback), m_pid(pid)
-    {
-    }
-
-    void Execute()
-    {
-        try
-        {
-            m_result = SBWaitForProcess(m_pid);
-        }
-        catch (std::exception &ex)
-        {
-            SetErrorMessage(ex.what());
-        }
-        catch (...)
-        {
-            SetErrorMessage("Something unexpected occurred while waiting for process termiation");
-        }
-    }
-
-    void HandleOKCallback()
-    {
-        HandleScope scope;
-
-        Local<Object> resultObject = Nan::New<Object>();
-        string statusStr;
-        switch (m_result.Status)
-        {
-        case EXITED:
-            statusStr = string("exited");
-            break;
-        case SIGNALED:
-            statusStr = string("signaled");
-            break;
-        }
-        Set(resultObject, STR("status"), STR(statusStr));
-        Set(resultObject, STR("code"), NUM(m_result.Code));
-
-        Local<Value> argv[] = {
-            Nan::Null(),
-            resultObject};
-        Nan::Call(*callback, 2, argv);
-    }
-
-    void HandleErrorCallback()
-    {
-        HandleScope scope;
-
-        Local<Value> argv[] = {
-            Nan::Error(ErrorMessage()),
-            Nan::Null()};
-        Nan::Call(*callback, 2, argv);
-    }
-
-  private:
-    pid_t m_pid;
-    ExecutionResult m_result;
-};
-
-class StartSandboxWorker : public AsyncWorker
-{
-  public:
-    StartSandboxWorker(Callback *callback, SandboxParameter param) : AsyncWorker(callback),
-                                                                     m_parameter(param)
-    {
-    }
-
-    void Execute()
-    {
-        try
-        {
-            resultPid = StartSandbox(m_parameter);
-        }
-        catch (std::exception &ex)
-        {
-            SetErrorMessage(ex.what());
-        }
-        catch (...)
-        {
-            SetErrorMessage("Something unexpected happened while starting sandbox.");
-        }
-    }
-
-    void HandleOKCallback()
-    {
-        HandleScope scope;
-
-        Local<Object> resultObject = Nan::New<Object>();
-        Set(resultObject, STR("pid"), NUM(resultPid));
-
-        Local<Value> argv[] = {
-            Nan::Null(),
-            resultObject};
-        Nan::Call(*callback, 2, argv);
-    }
-
-    void HandleErrorCallback()
-    {
-        HandleScope scope;
-
-        Local<Value> argv[] = {
-            Nan::Error(ErrorMessage()),
-            Nan::Null()};
-        Nan::Call(*callback, 2, argv);
-    }
-
-  private:
-    SandboxParameter m_parameter;
-    int resultPid;
-};
-
-static void StringArrayToVector(Local<Value> val, vector<string> &vec)
-{
-    HandleScope scope;
-    if (val->IsArray())
-    {
-        Local<Array> paramArray = Local<Array>::Cast(val);
-        for (uint8_t i = 0; i < paramArray->Length(); i++)
-        {
-            vec.push_back(string(*Nan::Utf8String(Nan::Get(paramArray, i).ToLocalChecked())));
-        }
-    }
-    else
-    {
-        vec.push_back(string(*Nan::Utf8String(val)));
-    }
-}
-
-static bool IsNullOrUndefined(const Local<Value> &val)
-{
-    return val->IsUndefined() || val->IsNull();
-}
-
-static string ValueToString(const Local<Value> &val)
-{
-    if (IsNullOrUndefined(val))
-    {
-        return string("");
-    }
-    else
-    {
-        return string(*Nan::Utf8String(val));
-    }
-}
-
-NAN_METHOD(GetCgroupProperty2)
-{
-    string controllerName = ValueToString(info[0]);
-    string cgroupName = ValueToString(info[1]);
-    string propertyName = ValueToString(info[2]);
-    string subPropertyName = ValueToString(info[3]);
-    int64_t val;
+    string controllerName = info[0].ToString().Utf8Value();
+    string cgroupName = info[1].ToString().Utf8Value();
+    string propertyName = info[2].ToString().Utf8Value();
+    string subPropertyName = info[3].ToString().Utf8Value();
     try
     {
         CgroupInfo cginfo(controllerName, cgroupName);
-        val = ReadGroupPropertyMap(cginfo, propertyName)[subPropertyName];
+        // v8 doesn't support 64-bit integer, so let's use string.
+        return Napi::String::New(env, std::to_string(ReadGroupPropertyMap(cginfo, propertyName)[subPropertyName]));
     }
     catch (std::exception &ex)
     {
-        ThrowTypeError(ex.what());
-        return;
+        Napi::Error::New(env, ex.what()).ThrowAsJavaScriptException();
     }
-    // v8 doesn't support 64-bit integer, so let's use string.
-    info.GetReturnValue().Set(STR(std::to_string(val)));
+    catch (...)
+    {
+        Napi::Error::New(env, "Something unexpected happened while getting cgroup property.").ThrowAsJavaScriptException();
+    }
+    return Napi::Value();
 }
 
-NAN_METHOD(GetCgroupProperty)
+Napi::Value NodeGetCgroupProperty(const Napi::CallbackInfo &info)
 {
-    string controllerName = ValueToString(info[0]);
-    string cgroupName = ValueToString(info[1]);
-    string propertyName = ValueToString(info[2]);
-    uint64_t val;
+    Napi::Env env = info.Env();
+
+    string controllerName = info[0].ToString().Utf8Value();
+    string cgroupName = info[1].ToString().Utf8Value();
+    string propertyName = info[2].ToString().Utf8Value();
     try
     {
         CgroupInfo cginfo(controllerName, cgroupName);
-        val = ReadGroupProperty(cginfo, propertyName);
+        // v8 doesn't support 64-bit integer, so let's use string.
+        return Napi::String::New(env, std::to_string(ReadGroupProperty(cginfo, propertyName)));
     }
     catch (std::exception &ex)
     {
-        ThrowTypeError(ex.what());
-        return;
+        Napi::Error::New(env, ex.what()).ThrowAsJavaScriptException();
     }
-    // v8 doesn't support 64-bit integer, so let's use string.
-    info.GetReturnValue().Set(STR(std::to_string(val)));
+    catch (...)
+    {
+        Napi::Error::New(env, "Something unexpected happened while getting cgroup property.").ThrowAsJavaScriptException();
+    }
+    return Napi::Value();
 }
 
-NAN_METHOD(RemoveCgroup)
+void NodeRemoveCgroup(const Napi::CallbackInfo &info)
 {
-    string controllerName = ValueToString(info[0]);
-    string cgroupName = ValueToString(info[1]);
+    Napi::Env env = info.Env();
+
+    string controllerName = info[0].ToString().Utf8Value();
+    string cgroupName = info[1].ToString().Utf8Value();
     try
     {
         CgroupInfo cginfo(controllerName, cgroupName);
-        Callback *callback = new Callback(info[2].As<Function>());
-        AsyncQueueWorker(new RemoveCgroupWorker(callback, cginfo));
+        RemoveCgroup(cginfo);
     }
     catch (std::exception &ex)
     {
-        ThrowTypeError(ex.what());
-        return;
+        Napi::Error::New(env, ex.what()).ThrowAsJavaScriptException();
+    }
+    catch (...)
+    {
+        Napi::Error::New(env, "Something unexpected happened while removing cgroup.").ThrowAsJavaScriptException();
     }
 }
 
-NAN_METHOD(StartChild)
+std::vector<string> StringArrayToVector(const Napi::Array &array) {
+    std::vector<string> result(array.Length());
+    for (size_t i = 0; i < array.Length(); i++) result[i] = array[i].ToString().Utf8Value();
+    return result;
+}
+
+Napi::Value NodeStartSandbox(const Napi::CallbackInfo &info)
 {
+    Napi::Env env = info.Env();
+
     SandboxParameter param;
-    Local<Object> jsparam;
-    if (info[0]->IsObject())
-    {
-        jsparam = Local<Object>::Cast(info[0]);
-    }
-    else
-    {
-        ThrowTypeError("Parameter must an object.");
-        return;
-    }
+    Napi::Object jsparam = info[0].As<Napi::Object>();
 
-#define PARAM(_src_, _name_) (Get(_src_, STR(#_name_)).ToLocalChecked())
-#define GET_INT(_src_, _param_name_) (PARAM(_src_, _param_name_)->IntegerValue(Nan::GetCurrentContext()).ToChecked())
-#define GET_BOOL(_src_, _param_name_) (PARAM(_src_, _param_name_)->BooleanValue(Nan::GetCurrentContext()).ToChecked())
-#define GET_STRING(_src_, _param_name_) (ValueToString(PARAM(_src_, _param_name_)))
+    // param.timeLimit = jsparam.Get("time").ToNumber().Int32Value();
+    param.memoryLimit = jsparam.Get("memory").ToNumber().Int32Value() / 4 * 5; // Reserve some space to detect memory limit exceeding.
+    param.processLimit = jsparam.Get("process").ToNumber().Int32Value();
+    param.redirectBeforeChroot = jsparam.Get("redirectBeforeChroot").ToBoolean().Value();
+    param.mountProc = jsparam.Get("mountProc").ToBoolean().Value();
+    param.chrootDirectory = fs::path(jsparam.Get("chroot").ToString().Utf8Value());
+    param.workingDirectory = fs::path(jsparam.Get("workingDirectory").ToString().Utf8Value());
+    param.executablePath = jsparam.Get("executable").ToString().Utf8Value();
+    param.hostname = jsparam.Get("hostname").ToString().Utf8Value();
 
-    // param.timeLimit = GET_INT(time);
-    param.memoryLimit = GET_INT(jsparam, memory) / 4 * 5; // Reserve some space to detect memory limit exceeding.
-    param.processLimit = GET_INT(jsparam, process);
-    param.redirectBeforeChroot = GET_BOOL(jsparam, redirectBeforeChroot);
-    param.mountProc = GET_BOOL(jsparam, mountProc);
-    param.chrootDirectory = fs::path(GET_STRING(jsparam, chroot));
-    param.workingDirectory = fs::path(GET_STRING(jsparam, workingDirectory));
-    param.executablePath = GET_STRING(jsparam, executable);
-    param.hostname = GET_STRING(jsparam, hostname);
-
-#define SET_REDIRECTION(_name_)                                             \
-    if (PARAM(jsparam, _name_)->IsNumber())                                 \
-    {                                                                       \
-        param._name_##RedirectionFileDescriptor = GET_INT(jsparam, _name_); \
-    }                                                                       \
-    else                                                                    \
-    {                                                                       \
-        param._name_##RedirectionFileDescriptor = -1;                       \
-        param._name_##Redirection = GET_STRING(jsparam, _name_);            \
+#define SET_REDIRECTION(_name_)                                                                  \
+    if (jsparam.Get(#_name_).IsNumber())                                                      \
+    {                                                                                            \
+        param._name_##RedirectionFileDescriptor = jsparam.Get(#_name_).ToNumber().Int32Value(); \
+    }                                                                                            \
+    else                                                                                         \
+    {                                                                                            \
+        param._name_##RedirectionFileDescriptor = -1;                                            \
+        param._name_##Redirection = jsparam.Get(#_name_).ToString().Utf8Value();                \
     }
 
     SET_REDIRECTION(stdin);
     SET_REDIRECTION(stdout);
     SET_REDIRECTION(stderr);
 
-    param.userName = GET_STRING(jsparam, user);
-    param.cgroupName = GET_STRING(jsparam, cgroup);
-    if (IsNullOrUndefined(PARAM(jsparam, stackSize)))
-    {
+    param.userName = jsparam.Get("user").ToString().Utf8Value();
+    param.cgroupName = jsparam.Get("cgroup").ToString().Utf8Value();
+
+    param.stackSize = jsparam.Get("stackSize").ToNumber().Int32Value();
+    if (param.stackSize <= 0) {
         param.stackSize = -2;
     }
-    else
-    {
-        param.stackSize = GET_INT(jsparam, stackSize);
-    }
 
-    StringArrayToVector(PARAM(jsparam, parameters), param.executableParameters);
-    StringArrayToVector(PARAM(jsparam, environments), param.environmentVariables);
-    Local<Array> mounts = Local<Array>::Cast(PARAM(jsparam, mounts));
-    for (size_t i = 0; i < mounts->Length(); i++)
+    param.executableParameters = StringArrayToVector(jsparam.Get("parameters").As<Napi::Array>());
+    param.environmentVariables = StringArrayToVector(jsparam.Get("environments").As<Napi::Array>());
+    Napi::Array mounts = jsparam.Get("mounts").As<Napi::Array>();
+    for (size_t i = 0; i < mounts.Length(); i++)
     {
-        Local<Object> mntObj = Local<Object>::Cast(mounts->Get(i));
+        Napi::Object mntObj = static_cast<Napi::Value>(mounts[i]).As<Napi::Object>();
         MountInfo mnt;
-        mnt.src = fs::path(GET_STRING(mntObj, src));
-        mnt.dst = fs::path(GET_STRING(mntObj, dst));
-        mnt.limit = GET_INT(mntObj, limit);
+        mnt.src = fs::path(mntObj.Get("src").ToString().Utf8Value());
+        mnt.dst = fs::path(mntObj.Get("dst").ToString().Utf8Value());
+        mnt.limit = mntObj.Get("limit").ToNumber().Int32Value();
         param.mounts.push_back(mnt);
     }
 
-    Callback *callback = new Callback(info[1].As<Function>());
-
-    AsyncQueueWorker(new StartSandboxWorker(callback, param));
-}
-
-NAN_METHOD(WaitForProcess)
-{
-    pid_t pid = info[0]->IntegerValue(Nan::GetCurrentContext()).ToChecked();
-    Callback *callback = new Callback(info[1].As<Function>());
-    AsyncQueueWorker(new WaitForProcessWorker(callback, pid));
-}
-
-NAN_MODULE_INIT(Init)
-{
     try
     {
-        bool result = InitializeCgroup();
-        if (!result)
-        {
-            return ThrowError("Cgroup not mounted. Please check your system configuration.");
-        }
+        pid_t pid;
+        void *execParam = StartSandbox(param, pid);
+        Napi::Object result = Napi::Object::New(env);
+        result.Set("pid", Napi::Number::New(env, pid));
+        Napi::ArrayBuffer pointerToExecParam = Napi::ArrayBuffer::New(env, sizeof(execParam));
+        *reinterpret_cast<void **>(pointerToExecParam.Data()) = execParam;
+        result.Set("execParam", pointerToExecParam);
+        return result;
     }
     catch (std::exception &ex)
     {
-        return ThrowError(((format("Unable to initialize libcgroup: {}", ex.what()))).c_str());
+        Napi::Error::New(env, ex.what()).ThrowAsJavaScriptException();
     }
-
-    NAN_EXPORT(target, StartChild);
-    NAN_EXPORT(target, GetCgroupProperty);
-    NAN_EXPORT(target, GetCgroupProperty2);
-    NAN_EXPORT(target, RemoveCgroup);
-    NAN_EXPORT(target, WaitForProcess);
+    catch (...)
+    {
+        Napi::Error::New(env, "Something unexpected happened while starting sandbox.").ThrowAsJavaScriptException();
+    }
+    return Napi::Value();
 }
 
-NODE_MODULE(addon, Init)
+Napi::Value NodeWaitForProcess(const Napi::CallbackInfo &info)
+{
+    Napi::Env env = info.Env();
+
+    pid_t pid = info[0].ToNumber().Int32Value();
+    void *executionParameter = *reinterpret_cast<void **>(info[1].As<Napi::ArrayBuffer>().Data());
+
+    ExecutionResult result;
+    try
+    {
+        result = WaitForProcess(pid, executionParameter);
+    }
+    catch (std::exception &ex)
+    {
+        Napi::Error::New(env, ex.what()).ThrowAsJavaScriptException();
+        return Napi::Value();
+    }
+    catch (...)
+    {
+        Napi::Error::New(env, "Something unexpected occurred while waiting for process termiation").ThrowAsJavaScriptException();
+        return Napi::Value();
+    }
+
+    Napi::Object obj = Napi::Object::New(env);
+
+    obj.Set("status", result.status == EXITED ? "exited" : "signaled");
+    obj.Set("code", result.code);
+
+    return obj;
+}
+
+Napi::Object Init(Napi::Env env, Napi::Object exports) {
+    InitializeCgroup();
+    exports.Set("getCgroupProperty", Napi::Function::New(env, NodeGetCgroupProperty));
+    exports.Set("getCgroupProperty2", Napi::Function::New(env, NodeGetCgroupProperty2));
+    exports.Set("removeCgroup", Napi::Function::New(env, NodeRemoveCgroup));
+    exports.Set("startSandbox", Napi::Function::New(env, NodeStartSandbox));
+    exports.Set("waitForProcess", Napi::Function::New(env, NodeWaitForProcess));
+    return exports;
+}
+
+NODE_API_MODULE(NODE_MODULE_NAME, Init)
