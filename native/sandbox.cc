@@ -224,6 +224,12 @@ static int ChildProcess(void *param_ptr)
             ENSURE(setrlimit(RLIMIT_STACK, &rlim));
         }
 
+        {
+            rlimit rlim;
+            rlim.rlim_max = rlim.rlim_cur = 0;
+            ENSURE(setrlimit(RLIMIT_CORE, &rlim));
+        }
+
         if (newUser != nullptr)
         {
             gid_t groupList[1];
