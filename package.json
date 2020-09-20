@@ -1,11 +1,10 @@
 {
   "name": "simple-sandbox",
-  "version": "0.3.10",
+  "version": "0.3.12",
   "description": "A simple sandbox for Node.js using Linux namespaces and cgroup.",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "author": "t123yh",
-  "gypfile": true,
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -31,5 +30,9 @@
     "build": "tsc -p ./src",
     "build:watch": "tsc -w -p ./src"
   },
-  "optionalDependencies": {}
+  "files": [
+    "CMakeLists.txt",
+    "/native",
+    "/lib"
+  ]
 }
