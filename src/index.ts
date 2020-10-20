@@ -15,6 +15,6 @@ export function startSandbox(parameter: SandboxParameter): SandboxProcess {
     const actualParameter = Object.assign({}, parameter);
     actualParameter.cgroup = path.join(actualParameter.cgroup, randomString.generate(9));
     const startResult: { pid: number; execParam: ArrayBuffer } = nativeAddon.startSandbox(actualParameter);
-    return new SandboxProcess(parameter, startResult.pid, startResult.execParam);
+    return new SandboxProcess(actualParameter, startResult.pid, startResult.execParam);
 };
 
