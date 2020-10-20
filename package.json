@@ -1,6 +1,6 @@
 {
   "name": "simple-sandbox",
-  "version": "0.3.12",
+  "version": "0.3.13",
   "description": "A simple sandbox for Node.js using Linux namespaces and cgroup.",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -17,12 +17,12 @@
   ],
   "dependencies": {
     "bindings": "^1.5.0",
+    "cmake-js": "^6.0.0",
+    "node-addon-api": "^2.0.0",
     "randomstring": "^1.1.5"
   },
   "devDependencies": {
     "@types/node": "^12.12.26",
-    "cmake-js": "^6.0.0",
-    "node-addon-api": "^2.0.0",
     "typescript": "^3.7.5"
   },
   "scripts": {
