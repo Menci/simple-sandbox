@@ -11,10 +11,28 @@ if (!existsSync('/sys/fs/cgroup/memory/memory.memsw.usage_in_bytes')) {
     throw new Error("Your linux kernel doesn't support memory-swap account. Please turn it on following the readme.");
 }
 
+const MAX_RETRY_TIMES = 20;
 export function startSandbox(parameter: SandboxParameter): SandboxProcess {
-    const actualParameter = Object.assign({}, parameter);
-    actualParameter.cgroup = path.join(actualParameter.cgroup, randomString.generate(9));
-    const startResult: { pid: number; execParam: ArrayBuffer } = nativeAddon.startSandbox(actualParameter);
-    return new SandboxProcess(actualParameter, startResult.pid, startResult.execParam);
+    const doStart = () => {
+        const actualParameter = Object.assign({}, parameter);
+        actualParameter.cgroup = path.join(actualParameter.cgroup, randomString.generate(9));
+        const startResult: { pid: number; execParam: ArrayBuffer } = nativeAddon.startSandbox(actualParameter);
+        return new SandboxProcess(actualParameter, startResult.pid, startResult.execParam);
+    };
+
+    let retryTimes = MAX_RETRY_TIMES;
+    while (1) {
+        try {
+            return doStart();
+        } catch (e) {
+            // Retry if the child process fails
+            if ("message" in e && typeof e.message === "string" && e.message.startsWith("The child process ")) {
+                if (retryTimes-- > 0)
+                    continue;
+            }
+
+            throw e;
+        }
+    }
 };
 
