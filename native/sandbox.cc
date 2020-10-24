@@ -150,21 +150,36 @@ static int ChildProcess(void *param_ptr)
         std::vector<char> newUserDataBuffer;
         if (parameter.userName != "")
         {
-            // Get the user info before chroot, or it will be unable to open /etc/passwd
+            // Get the user info (in sandbox) before chroot
+            auto passwdFilePath = parameter.chrootDirectory / "etc" / "passwd";
+            FILE *passwdFile = fopen(passwdFilePath.c_str(), "r");
+            if (passwdFile == nullptr)
+                throw std::system_error(errno, std::system_category(), "Couldn't open /etc/passwd in rootfs");
+
             long passwdBufferSize = sysconf(_SC_GETPW_R_SIZE_MAX);
             if (passwdBufferSize == -1) passwdBufferSize = 16384;
             newUserDataBuffer.resize(passwdBufferSize);
-            const int ret = getpwnam_r(parameter.userName.c_str(), &newUserBuffer, newUserDataBuffer.data(), passwdBufferSize, &newUser);
+
+
+            passwd *user = nullptr;
+            while (fgetpwent_r(passwdFile, &newUserBuffer, newUserDataBuffer.data(), passwdBufferSize, &user) == 0)
+            {
+                if (parameter.userName == user->pw_name)
+                {
+                    newUser = user;
+                    break;
+                }
+            }
+
             if (newUser == nullptr)
             {
-                if (ret != 0)
-                {
-                    errno = ret;
-                    throw std::system_error(errno, std::system_category());
-                }
-                else
+                if (errno == ENOENT)
                     throw std::invalid_argument(format("No such user: {}", parameter.userName));
+                else
+                    throw std::system_error(errno, std::system_category(), "fgetpwent_r");
             }
+
+            fclose(passwdFile);
         }
 
         int nullfd = ENSURE(open("/dev/null", O_RDWR));
