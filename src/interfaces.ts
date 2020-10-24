@@ -65,11 +65,14 @@ export interface SandboxParameter {
     stdout?: string | Number;
     stderr?: string | Number;
 
-    // The user to run the sandboxed program with.
+    // The UID and GID to run the sandboxed program with.
     // Please make sure that this user have the read permission to the chroot and binary directory,
     // and have read-write permission to the working directory.
     // Multiple sandboxes can share one user.
-    user: string;
+    user?: {
+        uid: number;
+        gid: number;
+    };
 
     // The Control Group (cgroup) name the sandbox will be put inside.
     // Please specify a unique name to each sandbox (ideally the name of the sandbox).

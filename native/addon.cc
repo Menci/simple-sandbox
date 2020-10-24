@@ -127,7 +127,9 @@ Napi::Value NodeStartSandbox(const Napi::CallbackInfo &info)
     SET_REDIRECTION(stdout);
     SET_REDIRECTION(stderr);
 
-    param.userName = GetStringWithEmptyCheck(jsparam.Get("user"));
+    auto user = jsparam.Get("user").ToObject();
+    param.uid = user.Get("uid").ToNumber().Uint32Value();
+    param.gid = user.Get("gid").ToNumber().Uint32Value();
     param.cgroupName = GetStringWithEmptyCheck(jsparam.Get("cgroup"));
 
     param.stackSize = jsparam.Get("stackSize").ToNumber().Int32Value();

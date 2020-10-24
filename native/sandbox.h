@@ -84,10 +84,9 @@ struct SandboxParameter
     int stdoutRedirectionFileDescriptor;
     int stderrRedirectionFileDescriptor;
 
-    // The user the guest executable will be run as. 
-    // Please don't share users among sandboxes, 
-    // i.e. use a DISTINCTIVE user for EACH sandbox. The process limit is on each user, not each session.
-    std::string userName;
+    // The UID and GID the guest executable will be run as. 
+    uid_t uid;
+    gid_t gid;
 
     // The cgroup name of the sandbox. Must be unique.
     std::string cgroupName;

@@ -167,15 +167,6 @@ static int ChildProcess(void *param_ptr)
     {
         ENSURE(close(execParam.pipefd[0]));
 
-        passwd newUserBuffer, *newUser = nullptr;
-        std::vector<char> newUserDataBuffer;
-        if (parameter.userName != "")
-        {
-            // Get the user info (in sandbox) before chroot
-            GetUserEntryInSandbox(parameter.chrootDirectory, parameter.userName, newUserDataBuffer, newUserBuffer);
-            newUser = &newUserBuffer;
-        }
-
         int nullfd = ENSURE(open("/dev/null", O_RDWR));
         if (parameter.redirectBeforeChroot)
         {
@@ -239,14 +230,11 @@ static int ChildProcess(void *param_ptr)
             ENSURE(setrlimit(RLIMIT_CORE, &rlim));
         }
 
-        if (newUser != nullptr)
-        {
-            gid_t groupList[1];
-            groupList[0] = newUser->pw_gid;
-            ENSURE(syscall(SYS_setgid, newUser->pw_gid));
-            ENSURE(syscall(SYS_setgroups, 1, groupList));
-            ENSURE(syscall(SYS_setuid, newUser->pw_uid));
-        }
+        gid_t groupList[1];
+        groupList[0] = parameter.gid;
+        ENSURE(syscall(SYS_setgid, parameter.gid));
+        ENSURE(syscall(SYS_setgroups, 1, groupList));
+        ENSURE(syscall(SYS_setuid, parameter.uid));
 
         vector<char *> params = StringToPtr(parameter.executableParameters),
                        envi = StringToPtr(parameter.environmentVariables);

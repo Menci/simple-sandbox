@@ -10,9 +10,10 @@ process.on('SIGINT', terminationHandler);
 
 const doThings = async () => {
     try {
+        const rootfs = "/opt/sandbox-test/rootfs"
         const sandboxedProcess = sss.startSandbox({
             hostname: "qwq",
-            chroot: "/opt/sandbox-test/rootfs",
+            chroot: rootfs,
             mounts: [
                 {
                     src: "/opt/sandbox-test/binary",
@@ -32,9 +33,9 @@ const doThings = async () => {
             time: 60 * 1000, // 1 minute, for a bash playground
             mountProc: true,
             redirectBeforeChroot: true,
-            memory: 10240 * 1024, // 10MB
-            process: 10,
-            user: "nobody",
+            memory: 102400 * 1024, // 100MB
+            process: 30,
+            user: sss.getUidAndGidInSandbox(rootfs, "sandbox"),
             cgroup: "asdf",
             workingDirectory: "/sandbox/working"
         });
