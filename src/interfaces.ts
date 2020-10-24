@@ -52,7 +52,8 @@ export interface SandboxParameter {
     // You can specify a executable file in your binary directory. Note that the path is relative to the inside of the sandbox.
     // For example, if you have `a.out` in `/tmp/mydir`, you can specify `/tmp/mydir` as the binary directory,
     // and specify `/sandbox/binary/a.out` as the executable.
-    // You can also spacify a executable in your rootfs. For example, `/usr/bin/python` or `/bin/sh`.
+    // You can specify a executable in your rootfs. For example, `/usr/bin/python` or `/bin/sh`.
+    // You can also just specify a executable name. The executable will be searched in PATH.
     executable: string;
 
     // The file to be redirected as the Standard Input / Output of your sandboxed program.

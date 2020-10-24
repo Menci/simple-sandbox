@@ -109,7 +109,7 @@ Napi::Value NodeStartSandbox(const Napi::CallbackInfo &info)
     param.mountProc = jsparam.Get("mountProc").ToBoolean().Value();
     param.chrootDirectory = fs::path(GetStringWithEmptyCheck(jsparam.Get("chroot")));
     param.workingDirectory = fs::path(GetStringWithEmptyCheck(jsparam.Get("workingDirectory")));
-    param.executablePath = GetStringWithEmptyCheck(jsparam.Get("executable"));
+    param.executable = GetStringWithEmptyCheck(jsparam.Get("executable"));
     param.hostname = GetStringWithEmptyCheck(jsparam.Get("hostname"));
 
 #define SET_REDIRECTION(_name_)                                                                  \

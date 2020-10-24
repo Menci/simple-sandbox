@@ -63,7 +63,7 @@ struct SandboxParameter
     //
     // Tip: if you want to run a series of command,
     // You can create a .sh script and execute it.
-    std::string executablePath;
+    std::string executable;
     // These are the parameters passed to the guest executable.
     std::vector<std::string> executableParameters;
     std::vector<std::string> environmentVariables;

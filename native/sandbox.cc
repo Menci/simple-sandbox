@@ -251,9 +251,9 @@ static int ChildProcess(void *param_ptr)
         // Wait for parent's reply.
         execParam.semaphore2.Wait();
 
-        ENSURE(execve(parameter.executablePath.c_str(), &params[0], &envi[0]));
+        ENSURE(execvpe(parameter.executable.c_str(), &params[0], &envi[0]));
 
-        // If execve returns, then we meet an error.
+        // If execvpe returns, then we meet an error.
         return 1;
     }
     catch (std::exception &err)
@@ -279,7 +279,7 @@ static int ChildProcess(void *param_ptr)
     }
 }
 
-// The child stack is only used before `execve`, so it does not need much space.
+// The child stack is only used before `execvpe`, so it does not need much space.
 const int childStackSize = 1024 * 700;
 void *StartSandbox(const SandboxParameter &parameter,
                    pid_t &container_pid)
