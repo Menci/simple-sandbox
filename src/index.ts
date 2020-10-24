@@ -36,3 +36,10 @@ export function startSandbox(parameter: SandboxParameter): SandboxProcess {
     }
 };
 
+export function getUidAndGidInSandbox(rootfs: string, username: string): { uid: number; gid: number } {
+    try {
+        return nativeAddon.getUidAndGidInSandbox(rootfs, username);
+    } catch (e) {
+        throw e;
+    }
+}

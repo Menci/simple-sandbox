@@ -223,10 +223,33 @@ void NodeWaitForProcess(const Napi::CallbackInfo &info)
     waitForProcessWorker->Queue();
 }
 
+Napi::Value NodeGetUidAndGidInSandbox(const Napi::CallbackInfo &info)
+{
+    Napi::Env env = info.Env();
+    fs::path rootfs = info[0].As<Napi::String>().Utf8Value();
+    auto username = info[1].As<Napi::String>().Utf8Value();
+
+    std::vector<char> dataBuffer;
+    passwd user;
+    try {
+        GetUserEntryInSandbox(rootfs, username, dataBuffer, user);
+    } catch (std::exception &ex) {
+        Napi::Error::New(env, ex.what()).ThrowAsJavaScriptException();
+        return env.Undefined();
+    }
+
+    auto result = Napi::Object::New(env);
+    result.Set("uid", Napi::Number::New(env, user.pw_uid));
+    result.Set("gid", Napi::Number::New(env, user.pw_gid));
+
+    return result;
+}
+
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
     exports.Set("getCgroupProperty", Napi::Function::New(env, NodeGetCgroupProperty));
     exports.Set("getCgroupProperty2", Napi::Function::New(env, NodeGetCgroupProperty2));
     exports.Set("removeCgroup", Napi::Function::New(env, NodeRemoveCgroup));
+    exports.Set("getUidAndGidInSandbox", Napi::Function::New(env, NodeGetUidAndGidInSandbox));
     exports.Set("startSandbox", Napi::Function::New(env, NodeStartSandbox));
     exports.Set("waitForProcess", Napi::Function::New(env, NodeWaitForProcess));
     return exports;

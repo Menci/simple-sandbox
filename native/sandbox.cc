@@ -18,7 +18,6 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <syscall.h>
-#include <pwd.h>
 #include <grp.h>
 #include <sys/time.h>
 #include <sys/resource.h>
@@ -136,6 +135,28 @@ static void EnsureDirectoryExistance(fs::path dir) {
     }
 }
 
+void GetUserEntryInSandbox(const fs::path &rootfs, const std::string username, std::vector<char> &dataBuffer, passwd &entry) {
+    auto passwdFilePath = rootfs / "etc" / "passwd";
+    std::unique_ptr<FILE, decltype(&fclose)> passwdFile(fopen(passwdFilePath.c_str(), "r"), &fclose);
+    if (passwdFile == nullptr)
+        throw std::system_error(errno, std::system_category(), "Couldn't open /etc/passwd in rootfs");
+
+    long passwdBufferSize = sysconf(_SC_GETPW_R_SIZE_MAX);
+    if (passwdBufferSize == -1) passwdBufferSize = 16384;
+    dataBuffer.resize(passwdBufferSize);
+
+    passwd *user = nullptr;
+    while (fgetpwent_r(passwdFile.get(), &entry, dataBuffer.data(), passwdBufferSize, &user) == 0)
+        if (username == user->pw_name)
+            break;
+
+    if (user == nullptr)
+        if (errno == ENOENT)
+            throw std::invalid_argument(format("No such user: {}", username));
+        else
+            throw std::system_error(errno, std::system_category(), "fgetpwent_r");
+}
+
 static int ChildProcess(void *param_ptr)
 {
     ExecutionParameter &execParam = *reinterpret_cast<ExecutionParameter *>(param_ptr);
@@ -151,35 +172,8 @@ static int ChildProcess(void *param_ptr)
         if (parameter.userName != "")
         {
             // Get the user info (in sandbox) before chroot
-            auto passwdFilePath = parameter.chrootDirectory / "etc" / "passwd";
-            FILE *passwdFile = fopen(passwdFilePath.c_str(), "r");
-            if (passwdFile == nullptr)
-                throw std::system_error(errno, std::system_category(), "Couldn't open /etc/passwd in rootfs");
-
-            long passwdBufferSize = sysconf(_SC_GETPW_R_SIZE_MAX);
-            if (passwdBufferSize == -1) passwdBufferSize = 16384;
-            newUserDataBuffer.resize(passwdBufferSize);
-
-
-            passwd *user = nullptr;
-            while (fgetpwent_r(passwdFile, &newUserBuffer, newUserDataBuffer.data(), passwdBufferSize, &user) == 0)
-            {
-                if (parameter.userName == user->pw_name)
-                {
-                    newUser = user;
-                    break;
-                }
-            }
-
-            if (newUser == nullptr)
-            {
-                if (errno == ENOENT)
-                    throw std::invalid_argument(format("No such user: {}", parameter.userName));
-                else
-                    throw std::system_error(errno, std::system_category(), "fgetpwent_r");
-            }
-
-            fclose(passwdFile);
+            GetUserEntryInSandbox(parameter.chrootDirectory, parameter.userName, newUserDataBuffer, newUserBuffer);
+            newUser = &newUserBuffer;
         }
 
         int nullfd = ENSURE(open("/dev/null", O_RDWR));

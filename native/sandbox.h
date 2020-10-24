@@ -4,6 +4,7 @@
 #include <vector>
 #include <filesystem>
 #include <unistd.h>
+#include <pwd.h>
 
 enum RunStatus {
     EXITED = 0, // App exited normally.
@@ -94,6 +95,8 @@ struct SandboxParameter
     // The hostname inside the sandbox, by default equals to the hostname outside.
     std::string hostname;
 };
+
+void GetUserEntryInSandbox(const std::filesystem::path &rootfs, const std::string username, std::vector<char> &dataBuffer, passwd &entry);
 
 void *StartSandbox(const SandboxParameter &, pid_t &);
 
