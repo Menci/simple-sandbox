@@ -69,7 +69,7 @@ export interface SandboxParameter {
     // Please make sure that this user have the read permission to the chroot and binary directory,
     // and have read-write permission to the working directory.
     // Multiple sandboxes can share one user.
-    user?: {
+    user: {
         uid: number;
         gid: number;
     };
