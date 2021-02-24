@@ -219,9 +219,9 @@ static int ChildProcess(void *param_ptr)
 
         if (parameter.stackSize != -2)
         {
-            rlimit rlim;
-            rlim.rlim_max = rlim.rlim_cur = parameter.stackSize != -1 ? parameter.stackSize : RLIM_INFINITY;
-            ENSURE(setrlimit(RLIMIT_STACK, &rlim));
+            rlimit64 rlim;
+            rlim.rlim_max = rlim.rlim_cur = parameter.stackSize != -1 ? parameter.stackSize : RLIM64_INFINITY;
+            ENSURE(setrlimit64(RLIMIT_STACK, &rlim));
         }
 
         {

@@ -103,7 +103,7 @@ Napi::Value NodeStartSandbox(const Napi::CallbackInfo &info)
     Napi::Object jsparam = info[0].As<Napi::Object>();
 
     // param.timeLimit = jsparam.Get("time").ToNumber().Int32Value();
-    param.memoryLimit = jsparam.Get("memory").ToNumber().Int32Value() / 4 * 5; // Reserve some space to detect memory limit exceeding.
+    param.memoryLimit = jsparam.Get("memory").ToNumber().Int64Value() / 4 * 5; // Reserve some space to detect memory limit exceeding.
     param.processLimit = jsparam.Get("process").ToNumber().Int32Value();
     param.redirectBeforeChroot = jsparam.Get("redirectBeforeChroot").ToBoolean().Value();
     param.mountProc = jsparam.Get("mountProc").ToBoolean().Value();
@@ -132,7 +132,7 @@ Napi::Value NodeStartSandbox(const Napi::CallbackInfo &info)
     param.gid = user.Get("gid").ToNumber().Uint32Value();
     param.cgroupName = GetStringWithEmptyCheck(jsparam.Get("cgroup"));
 
-    param.stackSize = jsparam.Get("stackSize").ToNumber().Int32Value();
+    param.stackSize = jsparam.Get("stackSize").ToNumber().Int64Value();
     if (param.stackSize <= 0) {
         param.stackSize = -2;
     }
