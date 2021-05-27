@@ -22,6 +22,12 @@ Add `swapaccount=1` to `GRUB_CMDLINE_LINUX_DEFAULT` section in `/etc/default/gru
 GRUB_CMDLINE_LINUX_DEFAULT="quiet splash cgroup_enable=memory swapaccount=1"
 ```
 
+Some distro [enables cgroup v2 by default in their new versions](https://rootlesscontaine.rs/getting-started/common/cgroup2/), including Arch Linux (since April 2021), Fedora (since 31) and Debian. If you cannot find the directory `/sys/fs/cgroup/memory/`, this is the case for you. In this case, you also need to add the parameter `systemd.unified_cgroup_hierarchy=0` to enable cgroup v1: 
+
+```bash
+GRUB_CMDLINE_LINUX_DEFAULT="quiet splash cgroup_enable=memory swapaccount=1 systemd.unified_cgroup_hierarchy=0"
+```
+
 And then run
 ```bash
 update-grub && reboot
