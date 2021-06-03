@@ -96,10 +96,15 @@ A demostration is available in the `demo` directory.
 In order to get the demostration running for every one, we create the directory `/opt/sandbox-test`.
 
 ```bash
+git clone https://github.com/t123yh/simple-sandbox.git
+npm install
+npm run build
 sudo mkdir /opt/sandbox-test
 sudo chown $(whoami) /opt/sandbox-test
 mkdir /opt/sandbox-test/rootfs /opt/sandbox-test/binary /opt/sandbox-test/working
-curl -L https://nl.alpinelinux.org/alpine/v3.5/releases/x86_64/alpine-minirootfs-3.5.2-x86_64.tar.gz | tar -xzvf - -C /opt/sandbox-test/rootfs
+curl -L https://dl-cdn.alpinelinux.org/alpine/v3.12/releases/x86_64/alpine-minirootfs-3.12.3-x86_64.tar.gz | tar -xzvf - -C /opt/sandbox-test/rootfs
+sudo chroot /sandbox-test/rootfs /bin/sh
+adduser sandbox
+exit
+sudo node demo/demo
 ```
-
-**(to be continued)**

@@ -14,7 +14,18 @@ if (!existsSync('/sys/fs/cgroup/memory/memory.memsw.usage_in_bytes')) {
 const MAX_RETRY_TIMES = 20;
 export function startSandbox(parameter: SandboxParameter): SandboxProcess {
     const doStart = () => {
-        const actualParameter = Object.assign({}, parameter);
+        const actualParameter = Object.assign({
+            time: -1,
+            memory: -1,
+            process: -1,
+            hostname: '',
+            mounts: [],
+            redirectBeforeChroot: false,
+            mountProc: false,
+            parameters: [],
+            environments: Object.entries(process.env).map(([key, value]) => key + '=' + value),
+            workingDirectory: '/'
+        }, parameter);
         actualParameter.cgroup = path.join(actualParameter.cgroup, randomString.generate(9));
         const startResult: { pid: number; execParam: ArrayBuffer } = nativeAddon.startSandbox(actualParameter);
         return new SandboxProcess(actualParameter, startResult.pid, startResult.execParam);
