@@ -1,6 +1,6 @@
 {
   "name": "simple-sandbox",
-  "version": "0.3.22",
+  "version": "0.3.23",
   "description": "A simple sandbox for Node.js using Linux namespaces and cgroup.",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -28,7 +28,8 @@
   "scripts": {
     "install": "cmake-js compile",
     "build": "tsc -p ./src",
-    "build:watch": "tsc -w -p ./src"
+    "build:watch": "tsc -w -p ./src",
+    "prepublishOnly": "yarn build"
   },
   "files": [
     "CMakeLists.txt",
