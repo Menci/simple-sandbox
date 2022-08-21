@@ -95,6 +95,12 @@ std::vector<string> StringArrayToVector(const Napi::Array &array) {
     return result;
 }
 
+std::vector<int> IntArrayToVector(const Napi::Array &array) {
+    std::vector<int> result(array.Length());
+    for (size_t i = 0; i < array.Length(); i++) result[i] = array[i].ToNumber().Int32Value();
+    return result;
+}
+
 Napi::Value NodeStartSandbox(const Napi::CallbackInfo &info)
 {
     Napi::Env env = info.Env();
@@ -111,6 +117,11 @@ Napi::Value NodeStartSandbox(const Napi::CallbackInfo &info)
     param.workingDirectory = fs::path(GetStringWithEmptyCheck(jsparam.Get("workingDirectory")));
     param.executable = GetStringWithEmptyCheck(jsparam.Get("executable"));
     param.hostname = GetStringWithEmptyCheck(jsparam.Get("hostname"));
+
+    const auto &cpuAffinity = jsparam.Get("cpuAffinity");
+    if (cpuAffinity.IsArray()) {
+        param.cpuAffinity = IntArrayToVector(cpuAffinity.As<Napi::Array>());
+    }
 
 #define SET_REDIRECTION(_name_)                                                                  \
     if (jsparam.Get(#_name_).IsNumber())                                                         \

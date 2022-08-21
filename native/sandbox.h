@@ -93,6 +93,9 @@ struct SandboxParameter
 
     // The hostname inside the sandbox, by default equals to the hostname outside.
     std::string hostname;
+
+    // sched_setaffinity
+    std::vector<int> cpuAffinity;
 };
 
 void GetUserEntryInSandbox(const std::filesystem::path &rootfs, const std::string username, std::vector<char> &dataBuffer, passwd &entry);

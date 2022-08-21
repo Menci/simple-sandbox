@@ -167,6 +167,14 @@ static int ChildProcess(void *param_ptr)
     {
         ENSURE(close(execParam.pipefd[0]));
 
+        if (!execParam.parameter.cpuAffinity.empty()) {
+            cpu_set_t mask;
+            CPU_ZERO(&mask);
+            for (auto cpu : execParam.parameter.cpuAffinity)
+                CPU_SET(cpu, &mask);
+            ENSURE(sched_setaffinity(0, sizeof(cpu_set_t), &mask));
+        }
+
         int nullfd = ENSURE(open("/dev/null", O_RDWR));
         if (parameter.redirectBeforeChroot)
         {

@@ -5,6 +5,7 @@ find_library(STDCPPFS_LIBRARY stdc++fs)
 find_package(fmt)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include_directories(${CMAKE_JS_INC})
 file(GLOB SOURCE_FILES "native/*.cc" "native/*.h")

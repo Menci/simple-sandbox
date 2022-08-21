@@ -95,6 +95,9 @@ export interface SandboxParameter {
     // If set, a `setrlimit` will be run to limit the stack size.
     // -1 indicates no limit.
     stackSize?: number;
+
+    // sched_setaffinity
+    cpuAffinity?: number[];
 };
 
 export enum SandboxStatus {
