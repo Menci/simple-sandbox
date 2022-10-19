@@ -5,6 +5,15 @@
 #include <stdexcept>
 #include <system_error>
 
+#if FMT_VERSION >= 90000
+
+#include <filesystem>
+#include <fmt/ostream.h>
+
+template <> struct fmt::formatter<std::filesystem::path> : fmt::ostream_formatter {};
+
+#endif
+
 std::string SignalToString(int signal);
 
 void Ensure_Seccomp(int XX);
