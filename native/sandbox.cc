@@ -27,6 +27,7 @@
 
 #include <fmt/format.h>
 #include <fmt/ostream.h>
+#include <fmt/std.h>
 
 #include "sandbox.h"
 #include "utils.h"
